@@ -137,6 +137,7 @@
           <div class="phone-viewport" id="primary-viewport-content">
             <!-- Dynamically injected screens -->
           </div>
+          <div class="safety-recording-persistent" id="safety-recording-persistent" hidden aria-live="assertive"></div>
 
           <!-- Bottom Navigation Bar (Home, Journey, Network, Profile) -->
           <nav class="bottom-nav">
@@ -219,7 +220,7 @@
       </div>
 
       <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
-        Select your situation. Verified helpers and your Safe Circle will be alerted immediately.
+        Select your situation. This demo creates an active help request and updates the helper view; no external messages are sent.
       </p>
 
       <!-- 4 Required Options -->
@@ -306,7 +307,7 @@
 
       <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px;">Activate Emergency SOS?</h3>
       <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 18px;">
-        This will immediately alert your Safe Circle, notify 7 nearby verified helpers, and display emergency dispatch options.
+        In this demo, SOS creates an active alert for the Safe Circle and helper views. It does not contact emergency services.
       </p>
 
       <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -337,6 +338,22 @@
         <button class="btn-secondary modal-close-trigger" style="justify-content: center; padding: 10px;">
           KEEP SOS ACTIVE
         </button>
+      </div>
+
+      <div class="modal-overlay" id="recording-stopped-modal">
+        <div class="modal-sheet">
+          <h3 style="font-size:18px;font-weight:800;margin-bottom:10px">Recording stopped</h3>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px">
+            Save this recording privately on this device, optionally share it with selected Safe Circle contacts, or discard it.
+          </p>
+          <label class="camera-share-toggle" style="font-size:12px;margin-bottom:10px"><input type="checkbox" id="recording-review-share"> Share with Safe Circle</label>
+          <div class="camera-contact-picker" id="recording-review-contacts" hidden>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-primary" id="recording-review-save" style="flex:1;justify-content:center">Save Securely</button>
+            <button class="btn-secondary" id="recording-review-discard" style="flex:1;justify-content:center">Discard</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -566,11 +583,10 @@
           <div class="pitch-slide-tag">1:30 – 2:45 | PART 3: LIVE 60-SECOND DEMONSTRATION</div>
           <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">Live Split-Screen Coordination Demo</h3>
           <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
-            <em>"Let me demonstrate how SafeLink works in real time using our dual-device live simulation.<br><br>
-            On the left screen, we have <strong>Aanya</strong>, a student heading home. She starts an Active Journey. SafeLink creates a live safety corridor and an automated check-in timer.<br><br>
-            Now, suppose Aanya feels unsafe. She taps <strong>'REQUEST HELP'</strong>. Instantly, her Safe Circle is pinged, and on the right screen, <strong>Rahul</strong> — an on-duty campus safety marshal 280 meters away — receives a real-time critical alert with strict non-confrontational safety instructions.<br><br>
-            Rahul taps <strong>'I CAN ASSIST'</strong>. Watch Aanya's phone update live: '1 verified helper is responding — Rahul Verma, arriving in 2 minutes'.<br><br>
-            Once Aanya reaches a safe point, she taps <strong>'I'M SAFE'</strong>. The request resolves immediately, and the location broadcast terminates automatically."</em>
+            <em>"Let me demonstrate SafeLink's guided, dual-device prototype flow.<br><br>
+            Aanya starts an Active Journey, then tells the <strong>Safe Assistant</strong>, 'I feel unsafe.' The assistant asks before creating a help request. After confirmation, the demo helper view shows the alert and Rahul accepts it.<br><br>
+            Aanya can open the <strong>Safety Camera</strong> and choose to save evidence privately or share it with selected Safe Circle contacts. The guided preview does not capture or publish media automatically.<br><br>
+            She taps <strong>'I'M SAFE'</strong> to end the demo journey and request. Alerts in this prototype update local demo views only; no SMS or emergency-service dispatch is connected."</em>
           </p>
           <div style="background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: var(--radius-xs); font-size: 11px; color: var(--accent-teal);">
             <strong>💡 Speaker Action:</strong> Click the <strong>"⚡ 1-Click Demo Flow"</strong> button on the top bar to run this exact sequence live in front of the judges!

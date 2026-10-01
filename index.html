@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeLink — When help is nearby, help is faster.</title>
+  <meta name="description" content="SafeLink is a community-powered personal safety network connecting trusted contacts, verified helpers, and controlled emergency coordination.">
+  
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Top Demo Control Bar for Competition Judges & Presentation -->
+  <header class="demo-control-bar">
+    <div class="demo-brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="brand-title">SafeLink</span>
+          <span class="brand-badge">Startup MVP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Perspective / Layout Switcher -->
+    <div class="demo-actions">
+      <button class="demo-btn view-toggle-btn active" data-mode="single" title="User View">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+        User View
+      </button>
+      <button class="demo-btn view-toggle-btn" data-mode="dual" title="Split-screen dual phone demo (User + Helper)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="9" height="18" rx="2"></rect><rect x="13" y="3" width="9" height="18" rx="2"></rect></svg>
+        Dual Phone Demo (User + Helper)
+      </button>
+      <button class="demo-btn view-toggle-btn" data-mode="admin" title="University Admin Dispatch Console">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Admin Console
+      </button>
+
+      <!-- Quick Competition Walkthrough Scenarios -->
+      <button class="demo-btn scenario-btn" id="scenario-1-btn" title="Simulates full main demo workflow">
+        ⚡ 1-Click Demo Flow
+      </button>
+      <button class="demo-btn" id="scenario-2-btn" title="Simulate Missed Check-in">
+        ⏱️ Missed Check-in
+      </button>
+      <button class="demo-btn pitch-btn" id="open-pitch-deck-btn" title="Open 3 to 4 min English Competition Speech & Deck">
+        🎤 3-4 Min Pitch Deck
+      </button>
+
+      <!-- Utility toggles -->
+      <button class="demo-btn" id="fluid-mode-toggle-btn" title="Toggle between Phone Mockup and Wide Responsive View">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+        <span id="fluid-mode-btn-text">Wide View</span>
+      </button>
+      <button class="demo-btn" id="sound-toggle-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        Sound: ON
+      </button>
+      <button class="demo-btn" id="theme-toggle-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        Theme
+      </button>
+      <button class="demo-btn" id="reset-demo-btn" title="Reset all states">
+        🔄 Reset
+      </button>
+    </div>
+  </header>
+
+  <!-- SVG Global Gradients for Radial Gauge -->
+  <svg width="0" height="0" style="position: absolute;">
+    <defs>
+      <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#48CAE4" />
+        <stop offset="100%" stop-color="#06D6A0" />
+      </linearGradient>
+      <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="rgba(72, 202, 228, 0.45)" />
+        <stop offset="100%" stop-color="rgba(72, 202, 228, 0)" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- Master Stage -->
+  <main class="app-stage" id="app-main-stage">
+
+    <!-- Phone 1: Primary Device (User Aanya Sharma - Student / Commuter) -->
+    <div class="device-container" id="primary-device-container">
+      <div class="device-label">
+        <span class="status-dot"></span>
+        <span>Phone 1: User Aanya (Student / Requester)</span>
+      </div>
+
+      <div class="device-frame">
+        <div class="device-screen">
+
+          <!-- Dynamic Notch / Island -->
+          <div class="dynamic-notch" id="primary-notch">
+            <div class="notch-camera"></div>
+            <span class="notch-pill-text" id="primary-notch-text">Active</span>
+            <div class="notch-speaker"></div>
+          </div>
+
+          <!-- Status Bar -->
+          <div class="phone-status-bar">
+            <span class="phone-clock">2:30 PM</span>
+            <div class="status-right">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"/></svg>
+              <span>5G</span>
+              <span>88%</span>
+            </div>
+          </div>
+
+          <!-- Strobe Siren Overlay (for safety siren tool) -->
+          <div class="siren-strobe-overlay" id="siren-strobe-overlay">
+            <div style="font-size: 20px; font-weight: 900; letter-spacing: 1px;">⚠️ EMERGENCY DEFENSE SIREN ⚠️</div>
+            <div>
+              <div style="font-size: 52px; margin-bottom: 10px;">🚨</div>
+              <div style="font-size: 16px; font-weight: 800;">HIGH-VOLUME ACOUSTIC ALARM ACTIVE</div>
+              <div style="font-size: 12px; margin-top: 6px; opacity: 0.9;">Disorienting strobe flashing. Network alerted.</div>
+            </div>
+            <button class="siren-stop-btn" onclick="stopSafetySiren()">STOP SIREN</button>
+          </div>
+
+          <!-- Phone Viewport Content (Router Container) -->
+          <div class="phone-viewport" id="primary-viewport-content">
+            <!-- Dynamically injected screens -->
+          </div>
+
+          <!-- Bottom Navigation Bar (Home, Journey, Network, Profile) -->
+          <nav class="bottom-nav">
+            <button class="nav-item active" data-screen="home">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <span>Home</span>
+            </button>
+            <button class="nav-item" data-screen="journey">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Journey</span>
+            </button>
+            <button class="nav-item" data-screen="helpers">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Network</span>
+            </button>
+            <button class="nav-item" data-screen="profile">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Profile</span>
+            </button>
+          </nav>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Secondary Device (Helper Rahul Verma - Verified Campus Marshal) -->
+    <!-- Shown in Dual View for competition judges -->
+    <div class="device-container" id="secondary-device-container" style="display: none;">
+      <div class="device-label" style="color: var(--accent-cyan);">
+        <span class="status-dot" style="background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan);"></span>
+        <span>Phone 2: Helper Rahul (Verified Responder)</span>
+      </div>
+
+      <div class="device-frame">
+        <div class="device-screen">
+
+          <!-- Dynamic Notch -->
+          <div class="dynamic-notch" id="secondary-notch">
+            <div class="notch-camera"></div>
+            <span class="notch-pill-text" id="secondary-notch-text" style="color: var(--accent-teal);">Helper Mesh</span>
+            <div class="notch-speaker"></div>
+          </div>
+
+          <!-- Status Bar -->
+          <div class="phone-status-bar">
+            <span class="phone-clock">2:30 PM</span>
+            <div class="status-right">
+              <span class="stat-pill teal" style="padding: 2px 6px; font-size: 9px;">Verified</span>
+              <span>5G</span>
+              <span>94%</span>
+            </div>
+          </div>
+
+          <!-- Secondary Viewport (Helper Screens 6 & 7) -->
+          <div class="phone-viewport" id="secondary-viewport-content">
+            <!-- Dynamically injected helper view -->
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin View Stage (Shown when Admin Console is active) -->
+    <div id="admin-view-stage" style="display: none; width: 100%;">
+      <!-- Dynamically injected admin console -->
+    </div>
+
+  </main>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 1: SCREEN 5 — REQUEST HELP BOTTOM SHEET               -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="request-help-modal">
+    <div class="modal-sheet">
+      <div class="sheet-handle modal-close-trigger"></div>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 18px; font-weight: 800; font-family: var(--font-heading);">Do you need assistance?</h3>
+        <button class="icon-btn modal-close-trigger" style="width: 28px; height: 28px;">✕</button>
+      </div>
+
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+        Select your situation. Verified helpers and your Safe Circle will be alerted immediately.
+      </p>
+
+      <!-- 4 Required Options -->
+      <div class="chip-grid">
+        <div class="chip-option selected" onclick="selectHelpReason(this, 'I feel unsafe')">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px;">⚠️</span>
+            <div>
+              <div style="font-weight: 700; font-size: 13px;">I feel unsafe</div>
+              <div style="font-size: 10px; color: var(--text-muted);">Suspicious individual, dark path, uneasy situation</div>
+            </div>
+          </div>
+          <span class="chip-radio">●</span>
+        </div>
+
+        <div class="chip-option" onclick="selectHelpReason(this, 'I need someone nearby')">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px;">👥</span>
+            <div>
+              <div style="font-weight: 700; font-size: 13px;">I need someone nearby</div>
+              <div style="font-size: 10px; color: var(--text-muted);">Need walking escort or visible friendly presence</div>
+            </div>
+          </div>
+          <span class="chip-radio">○</span>
+        </div>
+
+        <div class="chip-option" onclick="selectHelpReason(this, 'Medical assistance')">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px;">🚑</span>
+            <div>
+              <div style="font-weight: 700; font-size: 13px;">Medical assistance</div>
+              <div style="font-size: 10px; color: var(--text-muted);">Dizziness, injury, asthma, immediate first-aid</div>
+            </div>
+          </div>
+          <span class="chip-radio">○</span>
+        </div>
+
+        <div class="chip-option" onclick="selectHelpReason(this, 'Other assistance')">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 18px;">💬</span>
+            <div>
+              <div style="font-weight: 700; font-size: 13px;">Other</div>
+              <div style="font-size: 10px; color: var(--text-muted);">Lost, broken transportation, general community help</div>
+            </div>
+          </div>
+          <span class="chip-radio">○</span>
+        </div>
+      </div>
+
+      <!-- Controlled Location Sharing Prompt -->
+      <div style="background: rgba(72, 202, 228, 0.08); border: 1px solid rgba(72, 202, 228, 0.25); border-radius: var(--radius-sm); padding: 12px; margin: 14px 0;">
+        <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+          <div>
+            <div style="font-size: 12px; font-weight: 700; color: var(--accent-cyan);">Share approximate location with nearby verified helpers?</div>
+            <div style="font-size: 10px; color: var(--text-muted);">Only shares 250m quadrant; exact GPS is never publicly exposed.</div>
+          </div>
+          <input type="checkbox" checked id="share-approx-loc-check" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
+        </label>
+      </div>
+
+      <!-- Required Action Buttons: REQUEST HELP & CANCEL -->
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn-primary" id="modal-submit-request-help" style="background: linear-gradient(135deg, var(--accent-amber), #E63946); color: #070D1E; font-size: 15px; padding: 14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+          REQUEST HELP NOW
+        </button>
+        <button class="btn-secondary modal-close-trigger" style="justify-content: center; padding: 10px;">
+          CANCEL
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 2: SCREEN 9 — SOS CONFIRMATION MODAL                   -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="sos-confirm-modal">
+    <div class="modal-sheet" style="text-align: center;">
+      <div class="sheet-handle modal-close-trigger"></div>
+      
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 51, 75, 0.15); border: 2px solid var(--accent-red); color: var(--accent-red); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </div>
+
+      <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px;">Activate Emergency SOS?</h3>
+      <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 18px;">
+        This will immediately alert your Safe Circle, notify 7 nearby verified helpers, and display emergency dispatch options.
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn-danger" onclick="activateSOSConfirmed()" style="padding: 14px; font-size: 15px; justify-content: center;">
+          YES, ACTIVATE SOS
+        </button>
+        <button class="btn-secondary modal-close-trigger" style="justify-content: center; padding: 10px;">
+          CANCEL (ACCIDENTAL TAP)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 3: CANCEL SOS CONFIRMATION MODAL                       -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="cancel-sos-modal">
+    <div class="modal-sheet" style="text-align: center;">
+      <div class="sheet-handle modal-close-trigger"></div>
+      <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 8px;">Cancel Active SOS?</h3>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 18px;">
+        Please confirm that you are in a secure position. An update will be sent to your network.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn-primary" onclick="confirmCancelSOS()" style="background: linear-gradient(135deg, var(--accent-teal), #0077B6); justify-content: center; padding: 12px;">
+          CONFIRM: I AM SAFE
+        </button>
+        <button class="btn-secondary modal-close-trigger" style="justify-content: center; padding: 10px;">
+          KEEP SOS ACTIVE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 4: ADD SAFE CIRCLE CONTACT MODAL                       -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="add-contact-modal">
+    <div class="modal-sheet">
+      <div class="sheet-handle modal-close-trigger"></div>
+      <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 14px;">Add Trusted Contact</h3>
+      <form id="add-contact-form" onsubmit="event.preventDefault(); handleAddNewContact();">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Name</label>
+          <input type="text" id="new-contact-name" placeholder="e.g. Dad, Sister, Roommate" required 
+            style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 10px; color: #fff; font-size: 13px;">
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Relationship</label>
+          <input type="text" id="new-contact-relation" placeholder="e.g. Family, Partner, Dorm Mate" required 
+            style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 10px; color: #fff; font-size: 13px;">
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Mobile Number</label>
+          <input type="tel" id="new-contact-phone" placeholder="+91 98XXX XXXXX" required 
+            style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 10px; color: #fff; font-size: 13px;">
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%; padding: 12px;">
+          Save to Safe Circle
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 5: PRIVACY FEATURES EXPLAINER                          -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="privacy-features-modal">
+    <div class="modal-sheet">
+      <div class="sheet-handle modal-close-trigger"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="font-size: 18px; font-weight: 800;">Privacy Architecture</h3>
+        <button class="icon-btn modal-close-trigger" style="width: 28px; height: 28px;">✕</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+        <div style="background: rgba(255,255,255,0.04); padding: 10px 12px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-cyan);">
+          <strong style="color: #fff;">1. User-Controlled Location Sharing:</strong>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Location data is only transmitted when you explicitly start a journey or trigger assistance.
+          </p>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.04); padding: 10px 12px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-teal);">
+          <strong style="color: #fff;">2. Controlled Approximate Corridor:</strong>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Exact GPS coordinates are never broadcast publicly. Helpers receive a 250m grid buffer to safeguard personal privacy.
+          </p>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.04); padding: 10px 12px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-amber);">
+          <strong style="color: #fff;">3. Auto-Expiration & Zero-Retention:</strong>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Journey corridor broadcasts immediately end when you arrive or end the trip.
+          </p>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.04); padding: 10px 12px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-red);">
+          <strong style="color: #fff;">4. Rigorous Helper Verification:</strong>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Community members must submit verified institutional IDs and sign safety conduct agreements before receiving pings.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 6: FUTURE SCOPE / ROADMAP MODAL                        -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="future-scope-modal">
+    <div class="modal-sheet">
+      <div class="sheet-handle modal-close-trigger"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="font-size: 18px; font-weight: 800;">Future Vision & Roadmap</h3>
+        <button class="icon-btn modal-close-trigger" style="width: 28px; height: 28px;">✕</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+        <div class="card" style="padding: 10px 12px; margin-bottom: 0;">
+          <h4 style="font-size: 13px; font-weight: 700; color: var(--accent-cyan);">🎓 College & Corporate Safety Networks</h4>
+          <p style="font-size: 11px; color: var(--text-muted);">Multi-campus SSO integration, student union patrols, and corporate night-shift protection mesh.</p>
+        </div>
+
+        <div class="card" style="padding: 10px 12px; margin-bottom: 0;">
+          <h4 style="font-size: 13px; font-weight: 700; color: var(--accent-teal);">🚑 Emergency Services CAD Integration</h4>
+          <p style="font-size: 11px; color: var(--text-muted);">Direct telemetry pipe to 112/911 Computer Aided Dispatch to relay verified incident data automatically.</p>
+        </div>
+
+        <div class="card" style="padding: 10px 12px; margin-bottom: 0;">
+          <h4 style="font-size: 13px; font-weight: 700; color: var(--accent-amber);">🤖 AI-Based Risk-Pattern Analysis</h4>
+          <p style="font-size: 11px; color: var(--text-muted);">Proactive route suggestions based on real-time lighting quality, historical incident clusters, and crowd density.</p>
+        </div>
+
+        <div class="card" style="padding: 10px 12px; margin-bottom: 0;">
+          <h4 style="font-size: 13px; font-weight: 700; color: #FFFFFF;">📡 Offline BLE Mesh Communication</h4>
+          <p style="font-size: 11px; color: var(--text-muted);">Device-to-device Bluetooth Low Energy mesh routing that functions in basements or zero-cellular zones.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 8: INTERACTIVE CALLING SCREEN SIMULATOR                -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" id="in-app-call-modal">
+    <div class="modal-sheet" style="background: radial-gradient(circle at 50% 20%, #15254A, #070D1E); text-align: center; border-radius: 36px 36px 0 0; padding: 28px 20px;">
+      <div class="sheet-handle" onclick="endCurrentCall()"></div>
+      
+      <!-- Caller Avatar with Pulsing Rings -->
+      <div style="position: relative; width: 84px; height: 84px; margin: 10px auto 16px;">
+        <div id="call-avatar-circle" style="width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; border: 3px solid rgba(255,255,255,0.2); box-shadow: 0 0 30px rgba(72, 202, 228, 0.4);">
+          📞
+        </div>
+      </div>
+
+      <!-- Caller Details -->
+      <h2 id="call-contact-name" style="font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 4px; font-family: var(--font-heading);">
+        Emergency Police (112)
+      </h2>
+      <p id="call-contact-number" style="font-size: 13px; color: var(--accent-cyan); font-weight: 600; margin-bottom: 8px;">
+        112
+      </p>
+      <div id="call-status-text" style="font-size: 13px; color: var(--accent-teal); font-weight: 600; margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-teal); animation: pulse 1s infinite;"></span>
+        Ringing...
+      </div>
+
+      <!-- In-Call Actions Grid -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 280px; margin: 0 auto 24px;">
+        <button class="icon-btn" id="call-btn-mute" style="width: 52px; height: 52px; border-radius: 50%; margin: 0 auto; background: rgba(255,255,255,0.08);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        </button>
+        <button class="icon-btn" id="call-btn-keypad" style="width: 52px; height: 52px; border-radius: 50%; margin: 0 auto; background: rgba(255,255,255,0.08);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="icon-btn" id="call-btn-speaker" style="width: 52px; height: 52px; border-radius: 50%; margin: 0 auto; background: rgba(255,255,255,0.08);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        </button>
+      </div>
+
+      <!-- Real Native SIM Mobile Dialer Trigger Link -->
+      <div style="margin-bottom: 18px;">
+        <a id="native-sim-dial-btn" href="tel:112" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 12px; padding: 8px 16px; border-radius: var(--radius-full); text-decoration: none; color: var(--accent-cyan); border-color: rgba(72, 202, 228, 0.4); background: rgba(72, 202, 228, 0.1);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Open in Phone Dialer App (SIM)
+        </a>
+      </div>
+
+      <!-- Big Red End Call Button -->
+      <div>
+        <button onclick="endCurrentCall()" style="width: 68px; height: 68px; border-radius: 50%; background: #FF334B; border: none; color: white; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 20px rgba(255, 51, 75, 0.5); transition: transform 0.2s ease;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" style="transform: rotate(135deg);"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 8px;">END CALL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 7: 3 TO 4 MINUTE COMPETITION PITCH DECK & SCRIPT       -->
+  <!-- ============================================================ -->
+  <div class="pitch-modal-overlay" id="pitch-presentation-modal">
+    <div class="pitch-container">
+      <div class="pitch-header">
+        <div>
+          <span style="font-size: 11px; font-weight: 800; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 1px;">
+            Competition Winning Pitch Presentation
+          </span>
+          <h2 style="font-size: 20px; font-weight: 800; font-family: var(--font-heading);">
+            SafeLink — 3 to 4 Minute English Pitch & Demo Script
+          </h2>
+        </div>
+        <button class="icon-btn" id="close-pitch-modal-btn" style="width: 32px; height: 32px;">✕</button>
+      </div>
+
+      <div class="pitch-body">
+        <!-- Live Pitch Timer Banner -->
+        <div style="background: linear-gradient(135deg, rgba(72, 202, 228, 0.15), rgba(6, 214, 160, 0.15)); border: 1px solid var(--accent-cyan); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: 700; font-size: 13px;">Target Pitch Duration: 3:30 (3 to 4 minutes)</div>
+            <div style="font-size: 11px; color: var(--text-muted);">Deliver with confident energy, clear pacing, and demonstrate the dual-phone workflow live.</div>
+          </div>
+          <button class="btn-primary" onclick="SafeLinkAudio.playClick(); alert('Ready! Follow the 5 stages below during your presentation.');" style="font-size: 12px; padding: 6px 14px;">
+            Start Rehearsal
+          </button>
+        </div>
+
+        <!-- Section 1 -->
+        <div class="pitch-slide-card">
+          <div class="pitch-slide-tag">0:00 – 0:45 | PART 1: THE HOOK & THE CRITICAL GAP</div>
+          <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">“When help is nearby, help is faster.”</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+            <em>"Good morning, respected judges and fellow builders. Imagine you are walking back from the campus library or a late bus stop at 10 PM. You feel someone lingering behind you. You don't want to dial emergency police yet because you aren't sure if it's an immediate crime, but you feel vulnerable and alone.<br><br>
+            Current safety apps have one huge flaw: <strong>They are just an SOS button that dials someone 20 kilometers away who cannot reach you in time.</strong> The average emergency vehicle response time in crowded cities is 15 to 25 minutes. But in a personal safety situation, 30 seconds can change everything."</em>
+          </p>
+          <div style="background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: var(--radius-xs); font-size: 11px; color: var(--accent-cyan);">
+            <strong>💡 Speaker Action:</strong> Point to the SafeLink logo and state clearly: <em>"This is why we built SafeLink."</em>
+          </div>
+        </div>
+
+        <!-- Section 2 -->
+        <div class="pitch-slide-card">
+          <div class="pitch-slide-tag">0:45 – 1:30 | PART 2: THE SOLUTION — THE COMMUNITY SAFETY MESH</div>
+          <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">SafeLink: Community-Powered Rapid Response</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+            <em>"SafeLink is not just an emergency trigger. It is a <strong>community-powered personal safety network</strong> that coordinates three distinct safety layers:<br>
+            1. Your <strong>Safe Circle</strong> of trusted friends and family.<br>
+            2. Verified, background-checked <strong>SafeLink Community Helpers</strong> right in your immediate vicinity — campus marshals, medical volunteers, and trained peers.<br>
+            3. 24/7 <strong>Verified Safe Points</strong> like police desks, campus security kiosks, and lit safe havens.<br><br>
+            Crucially, SafeLink protects user privacy: <strong>We never publicly expose your exact GPS location.</strong> We use controlled approximate corridor sharing."</em>
+          </p>
+        </div>
+
+        <!-- Section 3 -->
+        <div class="pitch-slide-card">
+          <div class="pitch-slide-tag">1:30 – 2:45 | PART 3: LIVE 60-SECOND DEMONSTRATION</div>
+          <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">Live Split-Screen Coordination Demo</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+            <em>"Let me demonstrate how SafeLink works in real time using our dual-device live simulation.<br><br>
+            On the left screen, we have <strong>Aanya</strong>, a student heading home. She starts an Active Journey. SafeLink creates a live safety corridor and an automated check-in timer.<br><br>
+            Now, suppose Aanya feels unsafe. She taps <strong>'REQUEST HELP'</strong>. Instantly, her Safe Circle is pinged, and on the right screen, <strong>Rahul</strong> — an on-duty campus safety marshal 280 meters away — receives a real-time critical alert with strict non-confrontational safety instructions.<br><br>
+            Rahul taps <strong>'I CAN ASSIST'</strong>. Watch Aanya's phone update live: '1 verified helper is responding — Rahul Verma, arriving in 2 minutes'.<br><br>
+            Once Aanya reaches a safe point, she taps <strong>'I'M SAFE'</strong>. The request resolves immediately, and the location broadcast terminates automatically."</em>
+          </p>
+          <div style="background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: var(--radius-xs); font-size: 11px; color: var(--accent-teal);">
+            <strong>💡 Speaker Action:</strong> Click the <strong>"⚡ 1-Click Demo Flow"</strong> button on the top bar to run this exact sequence live in front of the judges!
+          </div>
+        </div>
+
+        <!-- Section 4 -->
+        <div class="pitch-slide-card">
+          <div class="pitch-slide-tag">2:45 – 3:30 | PART 4: PRIVACY, ROADMAP & BUSINESS VIABILITY</div>
+          <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">Privacy By Design & Scalable Impact</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+            <em>"Judges often ask: <strong>What about vigilantism or privacy abuse?</strong><br>
+            We engineered SafeLink with four fundamental safeguards:<br>
+            • Helpers are strictly instructed never to physically confront attackers, but to provide a calming presence, escort, or coordinate emergency services.<br>
+            • Every helper must be university ID verified with zero tolerance for misconduct.<br>
+            • Our roadmap includes AI risk-pattern analysis and direct E-911/CAD computer-aided dispatch integration.<br>
+            • Universities and enterprise campuses can deploy SafeLink as a safety-as-a-service subscription to reduce campus incident response times by over 70%."</em>
+          </p>
+        </div>
+
+        <!-- Section 5 -->
+        <div class="pitch-slide-card">
+          <div class="pitch-slide-tag">3:30 – 4:00 | PART 5: WINNING CLOSING STATEMENT</div>
+          <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 8px;">SafeLink: When Help is Nearby, Help is Faster.</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+            <em>"To conclude: SafeLink is not just an SOS button. It creates a coordinated, intelligent mesh of trusted contacts, nearby verified helpers, and emergency resources.<br><br>
+            Because when help is nearby... help is faster, and lives are saved.<br><br>
+            Thank you, and we are now open for your questions!"</em>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Inline Helper for Options in Modal -->
+  <script>
+    let selectedHelpType = "I feel unsafe";
+    function selectHelpReason(element, type) {
+      selectedHelpType = type;
+      document.querySelectorAll(".chip-option").forEach(el => {
+        el.classList.remove("selected");
+        const radio = el.querySelector(".chip-radio");
+        if (radio) radio.textContent = "○";
+      });
+      element.classList.add("selected");
+      const r = element.querySelector(".chip-radio");
+      if (r) r.textContent = "●";
+      SafeLinkAudio.playClick();
+    }
+
+    document.getElementById("modal-submit-request-help").addEventListener("click", () => {
+      handleCreateHelpRequest(selectedHelpType);
+      navigateTo("help-response");
+    });
+
+    function handleAddNewContact() {
+      const name = document.getElementById("new-contact-name").value;
+      const relation = document.getElementById("new-contact-relation").value;
+      const phone = document.getElementById("new-contact-phone").value;
+      
+      if (name && phone) {
+        SafeLinkAudio.playSuccess();
+        AppState.safeCircle.push({
+          id: "sc_" + (AppState.safeCircle.length + 1),
+          name: name,
+          relation: relation || "Trusted Contact",
+          phone: phone,
+          active: true,
+          initials: name.substring(0, 2).toUpperCase(),
+          color: "#48CAE4"
+        });
+        closeAllModals();
+        navigateTo("safecircle");
+        showToast(`${name} added to your Safe Circle.`);
+      }
+    }
+  </script>
+
+</body>
+</html>

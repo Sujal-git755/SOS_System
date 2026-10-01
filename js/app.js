@@ -376,7 +376,7 @@
     return `
       <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding: 24px 8px 16px;">
         <div style="text-align: center; margin-top: 40px;">
-          <div style="width: 72px; height: 72px; margin: 0 auto 16px; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); border-radius: 22px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-glow-cyan);">
+          <div class="welcome-mark">
             <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               <path d="m9 12 2 2 4-4"/>
@@ -472,7 +472,7 @@
         </div>
       ` : `
         <!-- Idle Status Card -->
-        <div class="card" style="padding: 12px 16px; margin-bottom: 14px; background: rgba(19, 33, 68, 0.5);">
+        <div class="card status-guard-card">
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--accent-teal); box-shadow: 0 0 8px var(--accent-teal);"></div>
@@ -641,16 +641,16 @@
           <span class="stat-pill teal">Active</span>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
-          <div style="background: rgba(255,255,255,0.04); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); cursor: pointer;" id="home-helpers-link">
-            <div style="font-size: 18px; font-weight: 800; color: var(--accent-cyan); font-family: var(--font-heading);">7</div>
-            <div style="font-size: 11px; font-weight: 600; color: #fff;">Verified Helpers</div>
+        <div class="mesh-stat-grid">
+          <div class="mesh-stat" id="home-helpers-link">
+            <div style="font-size: 22px; font-weight: 800; color: var(--accent-cyan); font-family: var(--font-heading); letter-spacing: -0.04em;">7</div>
+            <div style="font-size: 11px; font-weight: 700; color: #fff;">Verified Helpers</div>
             <div style="font-size: 10px; color: var(--accent-teal);">3 available now</div>
           </div>
 
-          <div style="background: rgba(255,255,255,0.04); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); cursor: pointer;" id="home-safepoints-link">
-            <div style="font-size: 18px; font-weight: 800; color: var(--accent-teal); font-family: var(--font-heading);">4</div>
-            <div style="font-size: 11px; font-weight: 600; color: #fff;">Nearby Safe Points</div>
+          <div class="mesh-stat" id="home-safepoints-link">
+            <div style="font-size: 22px; font-weight: 800; color: var(--accent-teal); font-family: var(--font-heading); letter-spacing: -0.04em;">4</div>
+            <div style="font-size: 11px; font-weight: 700; color: #fff;">Nearby Safe Points</div>
             <div style="font-size: 10px; color: var(--text-muted);">Police, ER & Desk</div>
           </div>
         </div>
@@ -731,7 +731,7 @@
         </div>
 
         <!-- Competition Judge Simulation Fast-Forward Box -->
-        <div class="card" style="border-style: dashed; border-color: rgba(72, 202, 228, 0.35); background: rgba(72, 202, 228, 0.04);">
+        <div class="card" style="border-style: dashed; border-color: rgba(94, 234, 212, 0.32); background: rgba(94, 234, 212, 0.04);">
           <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase; margin-bottom: 6px;">
             ⚡ Competition Judge Quick-Tester
           </div>
@@ -804,7 +804,7 @@
           </div>
 
           <!-- Controlled Location Sharing Toggle -->
-          <div style="background: rgba(72, 202, 228, 0.08); border: 1px solid rgba(72, 202, 228, 0.25); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 18px;">
+          <div style="background: rgba(94, 234, 212, 0.08); border: 1px solid rgba(94, 234, 212, 0.22); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 18px;">
             <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
               <div>
                 <div style="font-size: 12px; font-weight: 700; color: var(--accent-cyan);">Controlled Location Sharing</div>
@@ -850,12 +850,12 @@
         <!-- SVG Interactive Map Grid -->
         <svg class="map-svg-grid" viewBox="0 0 100 100" preserveAspectRatio="none">
           <!-- Street Grids & Blocks -->
-          <rect x="0" y="0" width="100" height="100" fill="#0A1329" />
-          <path d="M 0,25 Q 30,22 50,30 T 100,28" stroke="#182A4D" stroke-width="3" fill="none" />
-          <path d="M 0,50 L 100,50" stroke="#1E325C" stroke-width="4.5" fill="none" />
-          <path d="M 0,75 L 100,75" stroke="#182A4D" stroke-width="3" fill="none" />
-          <path d="M 30,0 L 30,100" stroke="#182A4D" stroke-width="3.5" fill="none" />
-          <path d="M 65,0 L 65,100" stroke="#1E325C" stroke-width="4" fill="none" />
+          <rect x="0" y="0" width="100" height="100" fill="#070B12" />
+          <path d="M 0,25 Q 30,22 50,30 T 100,28" stroke="#1A2433" stroke-width="3" fill="none" />
+          <path d="M 0,50 L 100,50" stroke="#243044" stroke-width="4.5" fill="none" />
+          <path d="M 0,75 L 100,75" stroke="#1A2433" stroke-width="3" fill="none" />
+          <path d="M 30,0 L 30,100" stroke="#1A2433" stroke-width="3.5" fill="none" />
+          <path d="M 65,0 L 65,100" stroke="#243044" stroke-width="4" fill="none" />
 
           <!-- Campus Quad Green Patch -->
           <rect x="34" y="32" width="26" height="14" rx="2" fill="rgba(6, 214, 160, 0.08)" stroke="rgba(6, 214, 160, 0.2)" stroke-dasharray="1 1" />
@@ -871,8 +871,8 @@
           </g>
 
           <!-- User Marker (Approximate Location) -->
-          <circle cx="50" cy="50" r="2.8" fill="#48CAE4" stroke="#FFFFFF" stroke-width="0.8" />
-          <circle cx="50" cy="50" r="4.5" fill="none" stroke="#48CAE4" stroke-width="0.5">
+          <circle cx="50" cy="50" r="2.8" fill="#5EEAD4" stroke="#FFFFFF" stroke-width="0.8" />
+          <circle cx="50" cy="50" r="4.5" fill="none" stroke="#5EEAD4" stroke-width="0.5">
             <animate attributeName="r" values="2.8; 6; 2.8" dur="2s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="1; 0; 1" dur="2s" repeatCount="indefinite" />
           </circle>
@@ -880,52 +880,52 @@
           <!-- Verified Assistance Points (Green) -->
           <!-- Police (sp_1) -->
           <g class="map-pin-group" data-pin="sp_1" style="cursor: pointer;">
-            <circle cx="36" cy="28" r="3" fill="#06D6A0" stroke="#FFFFFF" stroke-width="0.6" />
-            <text x="36" y="29.2" fill="#070D1E" font-size="2.6" font-weight="900" text-anchor="middle">P</text>
+            <circle cx="36" cy="28" r="3" fill="#34F5B0" stroke="#FFFFFF" stroke-width="0.6" />
+            <text x="36" y="29.2" fill="#05070C" font-size="2.6" font-weight="900" text-anchor="middle">P</text>
           </g>
 
           <!-- Hospital ER (sp_2) -->
           <g class="map-pin-group" data-pin="sp_2" style="cursor: pointer;">
-            <circle cx="70" cy="40" r="3" fill="#06D6A0" stroke="#FFFFFF" stroke-width="0.6" />
-            <text x="70" y="41.2" fill="#070D1E" font-size="2.6" font-weight="900" text-anchor="middle">+</text>
+            <circle cx="70" cy="40" r="3" fill="#34F5B0" stroke="#FFFFFF" stroke-width="0.6" />
+            <text x="70" y="41.2" fill="#05070C" font-size="2.6" font-weight="900" text-anchor="middle">+</text>
           </g>
 
           <!-- College Security Desk (sp_3) -->
           <g class="map-pin-group" data-pin="sp_3" style="cursor: pointer;">
-            <circle cx="44" cy="48" r="2.6" fill="#06D6A0" stroke="#FFFFFF" stroke-width="0.6" />
-            <text x="44" y="49.2" fill="#070D1E" font-size="2.2" font-weight="900" text-anchor="middle">S</text>
+            <circle cx="44" cy="48" r="2.6" fill="#34F5B0" stroke="#FFFFFF" stroke-width="0.6" />
+            <text x="44" y="49.2" fill="#05070C" font-size="2.2" font-weight="900" text-anchor="middle">S</text>
           </g>
 
           <!-- Public Safe Haven Pharmacy (sp_4) -->
           <g class="map-pin-group" data-pin="sp_4" style="cursor: pointer;">
-            <circle cx="60" cy="72" r="2.6" fill="#06D6A0" stroke="#FFFFFF" stroke-width="0.6" />
-            <text x="60" y="73.2" fill="#070D1E" font-size="2.2" font-weight="900" text-anchor="middle">Rx</text>
+            <circle cx="60" cy="72" r="2.6" fill="#34F5B0" stroke="#FFFFFF" stroke-width="0.6" />
+            <text x="60" y="73.2" fill="#05070C" font-size="2.2" font-weight="900" text-anchor="middle">Rx</text>
           </g>
 
           <!-- Verified SafeLink Helpers (Blue Shields/Pins) -->
           <!-- Rahul Verma (hlp_204) -->
           <g class="map-pin-group" data-pin="hlp_204" style="cursor: pointer;">
-            <circle cx="48" cy="52" r="2.8" fill="#0077B6" stroke="#48CAE4" stroke-width="0.8" />
+            <circle cx="48" cy="52" r="2.8" fill="#0EA5E9" stroke="#5EEAD4" stroke-width="0.8" />
             <text x="48" y="53.1" fill="#FFFFFF" font-size="2.4" font-weight="900" text-anchor="middle">H</text>
           </g>
 
           <!-- Dr. Maya (hlp_205) -->
           <g class="map-pin-group" data-pin="hlp_205" style="cursor: pointer;">
-            <circle cx="62" cy="35" r="2.6" fill="#0077B6" stroke="#48CAE4" stroke-width="0.8" />
+            <circle cx="62" cy="35" r="2.6" fill="#0EA5E9" stroke="#5EEAD4" stroke-width="0.8" />
             <text x="62" y="36.1" fill="#FFFFFF" font-size="2.2" font-weight="900" text-anchor="middle">H</text>
           </g>
 
           <!-- Priya (hlp_206) -->
           <g class="map-pin-group" data-pin="hlp_206" style="cursor: pointer;">
-            <circle cx="32" cy="68" r="2.6" fill="#0077B6" stroke="#48CAE4" stroke-width="0.8" />
+            <circle cx="32" cy="68" r="2.6" fill="#0EA5E9" stroke="#5EEAD4" stroke-width="0.8" />
             <text x="32" y="69.1" fill="#FFFFFF" font-size="2.2" font-weight="900" text-anchor="middle">H</text>
           </g>
 
           <!-- Active Emergency / Request (Red) if active -->
           ${AppState.activeHelpRequest.isActive || AppState.sosActive ? `
             <g>
-              <circle cx="52" cy="51" r="3.4" fill="#FF334B" stroke="#FFFFFF" stroke-width="0.8" />
-              <circle cx="52" cy="51" r="6" fill="none" stroke="#FF334B" stroke-width="0.6">
+              <circle cx="52" cy="51" r="3.4" fill="#FF4D6D" stroke="#FFFFFF" stroke-width="0.8" />
+              <circle cx="52" cy="51" r="6" fill="none" stroke="#FF4D6D" stroke-width="0.6">
                 <animate attributeName="r" values="3.4; 8; 3.4" dur="1.2s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="1; 0; 1" dur="1.2s" repeatCount="indefinite" />
               </circle>
@@ -936,10 +936,10 @@
 
         <!-- Map Quick Legend Badge -->
         <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(7, 13, 30, 0.85); backdrop-filter: blur(8px); padding: 4px 8px; border-radius: var(--radius-xs); border: 1px solid var(--border-subtle); font-size: 9px; display: flex; gap: 8px;">
-          <span style="color: #48CAE4;">● You (~250m)</span>
-          <span style="color: #06D6A0;">● Safe Point</span>
-          <span style="color: #0077B6;">● Helper</span>
-          ${AppState.activeHelpRequest.isActive ? '<span style="color: #FF334B;">● Active Alert</span>' : ''}
+          <span style="color: #5EEAD4;">● You (~250m)</span>
+          <span style="color: #34F5B0;">● Safe Point</span>
+          <span style="color: #38BDF8;">● Helper</span>
+          ${AppState.activeHelpRequest.isActive ? '<span style="color: #FF4D6D;">● Active Alert</span>' : ''}
         </div>
       </div>
 
@@ -1014,7 +1014,7 @@
       <div style="padding: 16px 8px;">
         <div class="app-header">
           <div class="user-snippet">
-            <div class="user-avatar" style="background: linear-gradient(135deg, #00B4D8, #0077B6);">${SafeLinkData.helperUser.avatar}</div>
+            <div class="user-avatar" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));">${SafeLinkData.helperUser.avatar}</div>
             <div class="user-info-text">
               <h3>${SafeLinkData.helperUser.name}</h3>
               <p>
@@ -1141,7 +1141,7 @@
 
         <div class="card" style="border-color: var(--accent-teal); background: rgba(6, 214, 160, 0.08);">
           <div style="text-align: center; margin-bottom: 14px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-teal); color: #070D1E; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-teal); color: var(--ink); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <h3 style="font-size: 17px; font-weight: 800; color: #fff;">Assistance request accepted.</h3>
@@ -1171,7 +1171,7 @@
             <button class="btn-secondary" id="helper-mark-unavailable-btn">
               Mark Unavailable
             </button>
-            <button class="btn-primary" id="helper-end-response-btn" style="background: linear-gradient(135deg, var(--accent-teal), #0077B6);">
+            <button class="btn-primary" id="helper-end-response-btn" style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));">
               End Response & Confirm Safe
             </button>
           </div>
@@ -1195,7 +1195,7 @@
 
       <div class="card" style="border-color: rgba(6, 214, 160, 0.5); background: linear-gradient(145deg, rgba(6, 214, 160, 0.1), rgba(19, 33, 68, 0.9));">
         <div style="text-align: center; margin-bottom: 16px;">
-          <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan)); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; color: #070D1E;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan)); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; color: var(--ink);">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div style="font-size: 12px; color: var(--accent-teal); font-weight: 700; text-transform: uppercase;">Help is being coordinated</div>
@@ -1207,7 +1207,7 @@
         <div style="background: rgba(255,255,255,0.05); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-subtle);">
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="width: 42px; height: 42px; border-radius: 50%; background: #0077B6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+              <div style="width: 42px; height: 42px; border-radius: 16px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); color: var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 800;">
                 RV
               </div>
               <div>
@@ -1228,7 +1228,7 @@
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <button class="btn-primary" id="btn-user-im-safe" style="background: linear-gradient(135deg, var(--accent-teal), #0077B6); width: 100%; padding: 12px; font-size: 14px;">
+          <button class="btn-primary" id="btn-user-im-safe" style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue)); width: 100%; padding: 12px; font-size: 14px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             I’M SAFE — RESOLVE REQUEST
           </button>
@@ -1267,7 +1267,7 @@
           </p>
 
           <div style="display: flex; flex-direction: column; gap: 10px;">
-            <button class="btn-primary" id="btn-overdue-safe" style="background: linear-gradient(135deg, var(--accent-teal), #0077B6); padding: 14px; font-size: 15px;">
+            <button class="btn-primary" id="btn-overdue-safe" style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue)); padding: 14px; font-size: 15px;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               I’M SAFE
             </button>
@@ -1300,7 +1300,7 @@
         <h2 style="font-size: 32px; font-weight: 800; font-family: var(--font-heading); margin-bottom: 4px;">4:15 PM</h2>
         <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 24px;">Expected arrival at Green Park Residence</div>
 
-        <button class="btn-primary" id="btn-checkin-im-safe" style="width: 100%; padding: 16px; font-size: 16px; background: linear-gradient(135deg, var(--accent-teal), #0077B6); margin-bottom: 16px;">
+        <button class="btn-primary" id="btn-checkin-im-safe" style="width: 100%; padding: 16px; font-size: 16px; background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue)); margin-bottom: 16px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
           I’M SAFE
         </button>
@@ -1384,19 +1384,19 @@
           <div style="background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); border-radius: var(--radius-md); padding: 14px; border: 1px solid rgba(255,255,255,0.15); margin-bottom: 16px;">
             <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
                 <span>Safe Circle notified via priority SMS</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
                 <span>7 nearby verified helpers alerted</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
                 <span>Campus security dispatch pinged</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
                 <span>Approximate location broadcast: South Campus Quad</span>
               </div>
             </div>
@@ -1458,7 +1458,7 @@
           <div class="card" style="padding: 12px 14px; margin-bottom: 0;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: ${c.color}; color: #070D1E; display: flex; align-items: center; justify-content: center; font-weight: 800;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: ${c.color}; color: var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 800;">
                   ${c.initials}
                 </div>
                 <div>
@@ -1542,7 +1542,7 @@
       </div>
 
       <div class="card" style="text-align: center; padding: 20px 16px;">
-        <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #0077B6, #48CAE4); color: white; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; margin: 0 auto 12px; border: 3px solid rgba(255,255,255,0.2);">
+        <div style="width: 64px; height: 64px; border-radius: 20px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; margin: 0 auto 12px; border: 1px solid rgba(255,255,255,0.2);">
           ${user.avatar}
         </div>
         <h3 style="font-size: 18px; font-weight: 800;">${user.name}</h3>
@@ -1869,7 +1869,7 @@
         SafeLinkAudio.playSuccess();
         btnDailyCheckin.textContent = "Checked ✓";
         btnDailyCheckin.style.background = "var(--accent-teal)";
-        btnDailyCheckin.style.color = "#070D1E";
+        btnDailyCheckin.style.color = "var(--ink)";
         showToast("🔥 Daily Safe Commute Logged! Streak increased to 15 Days.");
       });
     }
@@ -2464,28 +2464,6 @@
     if (!toast) {
       toast = document.createElement("div");
       toast.id = "app-live-toast";
-      toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%) translateY(100px);
-        background: rgba(13, 22, 46, 0.95);
-        color: #FFFFFF;
-        border: 1px solid var(--accent-cyan);
-        padding: 10px 18px;
-        border-radius: var(--radius-full);
-        font-size: 12px;
-        font-weight: 600;
-        z-index: 3000;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        pointer-events: none;
-        max-width: 90%;
-        text-align: center;
-      `;
       document.body.appendChild(toast);
     }
     toast.innerHTML = `<span style="color: var(--accent-teal);">●</span> ${message}`;

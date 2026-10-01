@@ -41,7 +41,7 @@ const SafeLinkData = {
       phone: "+91 98111 22334",
       active: true,
       initials: "M",
-      color: "#48CAE4"
+      color: "#5EEAD4"
     },
 
     {
@@ -51,7 +51,7 @@ const SafeLinkData = {
       phone: "+91 98333 44556",
       active: true,
       initials: "KS",
-      color: "#FFD166"
+      color: "#F5C451"
     },
     {
       id: "sc_4",
@@ -60,7 +60,7 @@ const SafeLinkData = {
       phone: "+91 98444 55667",
       active: true,
       initials: "PR",
-      color: "#A2D2FF"
+      color: "#A78BFA"
     }
   ],
 

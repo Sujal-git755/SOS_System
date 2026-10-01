@@ -9,7 +9,7 @@
   <!-- Modern Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
@@ -35,46 +35,50 @@
 
     <!-- Perspective / Layout Switcher -->
     <div class="demo-actions">
-      <button class="demo-btn view-toggle-btn active" data-mode="single" title="User View">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-        User View
-      </button>
-      <button class="demo-btn view-toggle-btn" data-mode="dual" title="Split-screen dual phone demo (User + Helper)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="9" height="18" rx="2"></rect><rect x="13" y="3" width="9" height="18" rx="2"></rect></svg>
-        Dual Phone Demo (User + Helper)
-      </button>
-      <button class="demo-btn view-toggle-btn" data-mode="admin" title="University Admin Dispatch Console">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-        Admin Console
-      </button>
+      <div class="demo-group">
+        <button class="demo-btn view-toggle-btn active" data-mode="single" title="User View">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          User View
+        </button>
+        <button class="demo-btn view-toggle-btn" data-mode="dual" title="Split-screen dual phone demo (User + Helper)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="9" height="18" rx="2"></rect><rect x="13" y="3" width="9" height="18" rx="2"></rect></svg>
+          Dual Phone Demo
+        </button>
+        <button class="demo-btn view-toggle-btn" data-mode="admin" title="University Admin Dispatch Console">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          Admin
+        </button>
+      </div>
 
-      <!-- Quick Competition Walkthrough Scenarios -->
-      <button class="demo-btn scenario-btn" id="scenario-1-btn" title="Simulates full main demo workflow">
-        ⚡ 1-Click Demo Flow
-      </button>
-      <button class="demo-btn" id="scenario-2-btn" title="Simulate Missed Check-in">
-        ⏱️ Missed Check-in
-      </button>
-      <button class="demo-btn pitch-btn" id="open-pitch-deck-btn" title="Open 3 to 4 min English Competition Speech & Deck">
-        🎤 3-4 Min Pitch Deck
-      </button>
+      <div class="demo-group">
+        <button class="demo-btn scenario-btn" id="scenario-1-btn" title="Simulates full main demo workflow">
+          ⚡ 1-Click Demo
+        </button>
+        <button class="demo-btn" id="scenario-2-btn" title="Simulate Missed Check-in">
+          ⏱ Missed Check-in
+        </button>
+        <button class="demo-btn pitch-btn" id="open-pitch-deck-btn" title="Open 3 to 4 min English Competition Speech & Deck">
+          Pitch Deck
+        </button>
+      </div>
 
-      <!-- Utility toggles -->
-      <button class="demo-btn" id="fluid-mode-toggle-btn" title="Toggle between Phone Mockup and Wide Responsive View">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-        <span id="fluid-mode-btn-text">Wide View</span>
-      </button>
-      <button class="demo-btn" id="sound-toggle-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-        Sound: ON
-      </button>
-      <button class="demo-btn" id="theme-toggle-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        Theme
-      </button>
-      <button class="demo-btn" id="reset-demo-btn" title="Reset all states">
-        🔄 Reset
-      </button>
+      <div class="demo-group">
+        <button class="demo-btn" id="fluid-mode-toggle-btn" title="Toggle between Phone Mockup and Wide Responsive View">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <span id="fluid-mode-btn-text">Wide View</span>
+        </button>
+        <button class="demo-btn" id="sound-toggle-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          Sound: ON
+        </button>
+        <button class="demo-btn" id="theme-toggle-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Theme
+        </button>
+        <button class="demo-btn" id="reset-demo-btn" title="Reset all states">
+          Reset
+        </button>
+      </div>
     </div>
   </header>
 
@@ -82,12 +86,12 @@
   <svg width="0" height="0" style="position: absolute;">
     <defs>
       <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#48CAE4" />
-        <stop offset="100%" stop-color="#06D6A0" />
+        <stop offset="0%" stop-color="#38BDF8" />
+        <stop offset="100%" stop-color="#5EEAD4" />
       </linearGradient>
       <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="rgba(72, 202, 228, 0.45)" />
-        <stop offset="100%" stop-color="rgba(72, 202, 228, 0)" />
+        <stop offset="0%" stop-color="rgba(94, 234, 212, 0.45)" />
+        <stop offset="100%" stop-color="rgba(94, 234, 212, 0)" />
       </linearGradient>
     </defs>
   </svg>
@@ -103,6 +107,10 @@
       </div>
 
       <div class="device-frame">
+        <span class="device-btn silent"></span>
+        <span class="device-btn vol-up"></span>
+        <span class="device-btn vol-down"></span>
+        <span class="device-btn power"></span>
         <div class="device-screen">
 
           <!-- Dynamic Notch / Island -->
@@ -171,6 +179,10 @@
       </div>
 
       <div class="device-frame">
+        <span class="device-btn silent"></span>
+        <span class="device-btn vol-up"></span>
+        <span class="device-btn vol-down"></span>
+        <span class="device-btn power"></span>
         <div class="device-screen">
 
           <!-- Dynamic Notch -->
@@ -270,7 +282,7 @@
       </div>
 
       <!-- Controlled Location Sharing Prompt -->
-      <div style="background: rgba(72, 202, 228, 0.08); border: 1px solid rgba(72, 202, 228, 0.25); border-radius: var(--radius-sm); padding: 12px; margin: 14px 0;">
+      <div class="privacy-callout" style="margin: 14px 0;">
         <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
           <div>
             <div style="font-size: 12px; font-weight: 700; color: var(--accent-cyan);">Share approximate location with nearby verified helpers?</div>
@@ -282,7 +294,7 @@
 
       <!-- Required Action Buttons: REQUEST HELP & CANCEL -->
       <div style="display: flex; flex-direction: column; gap: 8px;">
-        <button class="btn-primary" id="modal-submit-request-help" style="background: linear-gradient(135deg, var(--accent-amber), #E63946); color: #070D1E; font-size: 15px; padding: 14px;">
+        <button class="btn-danger" id="modal-submit-request-help" style="font-size: 15px; padding: 14px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
           REQUEST HELP NOW
         </button>
@@ -453,7 +465,7 @@
   <!-- MODAL 8: INTERACTIVE CALLING SCREEN SIMULATOR                -->
   <!-- ============================================================ -->
   <div class="modal-overlay" id="in-app-call-modal">
-    <div class="modal-sheet" style="background: radial-gradient(circle at 50% 20%, #15254A, #070D1E); text-align: center; border-radius: 36px 36px 0 0; padding: 28px 20px;">
+    <div class="modal-sheet" style="background: radial-gradient(circle at 50% 20%, #1B2433, #05070C); text-align: center; border-radius: 36px 36px 0 0; padding: 28px 20px;">
       <div class="sheet-handle" onclick="endCurrentCall()"></div>
       
       <!-- Caller Avatar with Pulsing Rings -->
@@ -645,7 +657,7 @@
           phone: phone,
           active: true,
           initials: name.substring(0, 2).toUpperCase(),
-          color: "#48CAE4"
+          color: "#5EEAD4"
         });
         closeAllModals();
         navigateTo("safecircle");

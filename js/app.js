@@ -2,9 +2,31 @@
 (function () {
   "use strict";
 
+  const evidenceStorageKey = "safelink-private-evidence-v1";
+
+  function loadSavedEvidence() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(evidenceStorageKey) || "[]");
+      return Array.isArray(saved) ? saved.filter(item => item && typeof item === "object") : [];
+    } catch (error) {
+      console.error("Unable to load private evidence:", error);
+      return [];
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    })[character]);
+  }
+
   // Application State
   const AppState = {
-    currentScreen: "home", // welcome, home, journey, map, helper-alert, help-response, checkin, sos, safecircle, helpers, profile, admin
+    currentScreen: "home", // welcome, home, journey, map, checkin, sos, safecircle, helpers, profile, camera, assistant
     secondaryScreen: "helper-alert", // for dual view
     viewMode: "single", // "single", "dual", "admin", "presentation"
     activeJourney: {
@@ -26,11 +48,30 @@
       location: "South Campus Quad Path",
       requestedAt: null,
       assignedHelper: null, // will become Rahul Verma
-      status: "idle" // "idle", "broadcast", "accepted", "resolved"
+      status: "idle", // "idle", "broadcast", "accepted", "resolved"
+      shareApproximateLocation: true
     },
     sosActive: false,
     soundEnabled: true,
     theme: "dark",
+    evidence: loadSavedEvidence(),
+    assistantTranscript: "",
+    assistantResponse: "Hi, I’m your Safe Assistant. Tell me what you need, or try “I feel unsafe.”",
+    assistantConfirmation: false,
+    assistantConfirmationAction: "",
+    cameraFacing: "environment",
+    cameraFlashOn: false,
+    demoCameraPreviewOnly: false,
+    safetyRecording: {
+      isActive: false,
+      isPaused: false,
+      microphoneEnabled: true,
+      startedAt: null,
+      elapsedBeforePause: 0,
+      statusMessage: "",
+      locationSharing: "off",
+      sosSnapshotStatus: ""
+    },
     helpers: [...SafeLinkData.verifiedHelpers],
     safeCircle: [...SafeLinkData.safeCircle],
     adminRequests: [...SafeLinkData.adminRequests],
@@ -39,6 +80,7 @@
 
   // Helper references
   window.AppState = AppState;
+  let demoScenarioTimeouts = [];
 
   // Initialize App
   function init() {
@@ -62,6 +104,26 @@
 
   // Event Listeners for UI
   function setupEventListeners() {
+    document.addEventListener("visibilitychange", () => {
+      if (!AppState.safetyRecording.isActive) return;
+      if (document.hidden) {
+        AppState.safetyRecording.statusMessage = "Background camera access depends on your device and browser. Recording may pause while this app is hidden.";
+      } else if (cameraStream && cameraStream.getVideoTracks().some(track => track.muted)) {
+        AppState.safetyRecording.statusMessage = "Your device is still restricting camera access in the background. Keep SafeLink visible to continue.";
+      } else {
+        AppState.safetyRecording.statusMessage = "";
+      }
+      updateRecordingIndicators();
+    });
+
+    document.getElementById("recording-review-save").addEventListener("click", saveStoppedRecording);
+    document.getElementById("recording-review-discard").addEventListener("click", discardStoppedRecording);
+    document.getElementById("recording-review-share").addEventListener("change", event => {
+      const picker = document.getElementById("recording-review-contacts");
+      picker.innerHTML = AppState.safeCircle.map(contact => `<label><input type="checkbox" value="${escapeHtml(contact.id)}"> ${escapeHtml(contact.name)}</label>`).join("");
+      picker.hidden = !event.target.checked;
+    });
+
     // Navigation items (Single phone view)
     document.querySelectorAll(".nav-item").forEach(item => {
       item.addEventListener("click", (e) => {
@@ -118,6 +180,8 @@
     if (isSecondary) {
       AppState.secondaryScreen = screenId;
     } else {
+      if (AppState.currentScreen === "camera" && screenId !== "camera") stopCameraPreview();
+      if (AppState.currentScreen === "assistant" && screenId !== "assistant") stopVoiceRecognition();
       AppState.currentScreen = screenId;
       // Update active nav tab
       document.querySelectorAll(".bottom-nav .nav-item").forEach(item => {
@@ -248,6 +312,21 @@
   // Reset entire state cleanly
   function resetAppDemoState() {
     SafeLinkAudio.playClick();
+    stopRecordingForReset();
+    if (AppState.currentScreen === "camera") stopCameraPreview();
+    if (AppState.currentScreen === "assistant") stopVoiceRecognition();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    AppState.assistantTranscript = "";
+    AppState.assistantResponse = "Hi, I’m your Safe Assistant. Tell me what you need, or try “I feel unsafe.”";
+    AppState.assistantConfirmation = false;
+    AppState.assistantConfirmationAction = "";
+    isMicrophoneMuted = false;
+    voiceInputUnavailable = false;
+    AppState.cameraFacing = "environment";
+    AppState.cameraFlashOn = false;
+    AppState.demoCameraPreviewOnly = false;
+    demoScenarioTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+    demoScenarioTimeouts = [];
     if (AppState.activeJourney.intervalId) {
       clearInterval(AppState.activeJourney.intervalId);
     }
@@ -262,6 +341,29 @@
     closeAllModals();
     renderCurrentViews();
     showToast("Demo state reset successfully. Ready for demonstration.");
+  }
+
+  function stopRecordingForReset() {
+    if (recordingTimer) clearInterval(recordingTimer);
+    recordingTimer = null;
+    if (cameraRecorder && cameraRecorder.state !== "inactive") {
+      cameraRecorder.ondataavailable = null;
+      cameraRecorder.onstop = null;
+      cameraRecorder.stop();
+    }
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    cameraRecorder = null;
+    cameraStream = null;
+    cameraRecordingChunks = [];
+    recordedVideoSegments = [];
+    pendingStoppedRecording = null;
+    AppState.safetyRecording.isActive = false;
+    AppState.safetyRecording.isPaused = false;
+    AppState.safetyRecording.microphoneEnabled = false;
+    AppState.safetyRecording.startedAt = null;
+    AppState.safetyRecording.elapsedBeforePause = 0;
+    AppState.safetyRecording.statusMessage = "";
+    AppState.safetyRecording.sosSnapshotStatus = "";
   }
 
   window.resetAppDemoState = resetAppDemoState;
@@ -335,6 +437,12 @@
       case "profile":
         html = renderProfileScreen();
         break;
+      case "camera":
+        html = renderSafetyCameraScreen();
+        break;
+      case "assistant":
+        html = renderVoiceAssistantScreen();
+        break;
       case "help-response":
         html = renderHelpResponseScreen();
         break;
@@ -343,10 +451,14 @@
     }
 
     container.innerHTML = html;
+    container.closest(".device-screen").classList.toggle("camera-mode", AppState.currentScreen === "camera");
+    container.closest(".device-screen").classList.toggle("recording-active", AppState.safetyRecording.isActive);
+    if (AppState.currentScreen === "camera") syncCameraPreviewUI();
     container.classList.remove("screen-fade-enter");
     void container.offsetWidth; // force DOM reflow
     container.classList.add("screen-fade-enter");
     attachDynamicViewListeners();
+    updateRecordingIndicators();
   }
 
   // Render Secondary Viewport (Helper Rahul in Dual Mode)
@@ -564,7 +676,7 @@
               <div>
                 <div style="font-size: 13px; font-weight: 800; color: #fff;">Assistance Request Active</div>
                 <div style="font-size: 11px; color: var(--text-secondary);">
-                  ${AppState.activeHelpRequest.status === "accepted" ? "Rahul V. (Verified Helper) is responding" : "7 nearby verified helpers alerted"}
+                  ${AppState.activeHelpRequest.status === "accepted" ? "Rahul V. (Verified Helper) is responding" : "Alert shown in 7 nearby helper demo views"}
                 </div>
               </div>
             </div>
@@ -604,6 +716,19 @@
           <span>SOS</span>
         </button>
         <div class="sos-label">EMERGENCY ASSISTANCE</div>
+      </div>
+
+      <div class="safety-feature-grid">
+        <button class="safety-feature-card camera-feature-card" id="home-safety-camera-btn">
+          <span class="safety-feature-icon">◉</span>
+          <span class="safety-feature-copy"><strong>Safety Camera</strong><small>Capture and save private evidence</small></span>
+          <span class="safety-feature-arrow">→</span>
+        </button>
+        <button class="safety-feature-card assistant-feature-card" id="home-safe-assistant-btn">
+          <span class="safety-feature-icon">✳</span>
+          <span class="safety-feature-copy"><strong>Safe Assistant</strong><small>Voice help, check-ins and quick actions</small></span>
+          <span class="safety-feature-arrow">→</span>
+        </button>
       </div>
 
       <!-- Safe Circle Status Card -->
@@ -711,6 +836,14 @@
 
           <!-- 4 Required Buttons -->
           <div class="journey-buttons-row">
+            <button class="btn-secondary" id="btn-journey-camera" style="border-color: rgba(72, 202, 228, 0.4); color: var(--accent-cyan);">
+              <span aria-hidden="true">◉</span>
+              Safety Camera
+            </button>
+            <button class="btn-secondary" id="btn-journey-assistant">
+              <span aria-hidden="true">✳</span>
+              Safe Assistant
+            </button>
             <button class="btn-secondary" id="btn-share-journey">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
               Share Journey
@@ -821,6 +954,1028 @@
         </form>
       </div>
     `;
+  }
+
+  let cameraStream = null;
+  let cameraRequestPending = false;
+  let cameraPermissionMessage = "SafeLink only uses your camera and microphone when you explicitly enable Safety Recording. Recording status will always be visible.";
+  let cameraRecorder = null;
+  let cameraRecordingChunks = [];
+  let recordedVideoSegments = [];
+  let pendingStoppedRecording = null;
+  let recordingSwitchInProgress = false;
+  let recordingSnapshotInProgress = false;
+  let microphoneFallbackAvailable = false;
+  let pendingEvidence = null;
+  let voiceRecognition = null;
+  let isMicrophoneMuted = false;
+  let voiceInputUnavailable = false;
+  let recordingTimer = null;
+  let demoRecording = false;
+
+  function renderSafetyCameraScreen() {
+    const evidence = AppState.evidence.slice(0, 5);
+    return `
+      <div class="app-header camera-screen-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="icon-btn" id="camera-back-btn" aria-label="Back to previous screen">←</button>
+          <div><h3 style="font-size:17px;font-weight:700">Safety Camera</h3><small style="color:var(--text-muted)">Private evidence capture</small></div>
+        </div>
+        <button class="camera-sos-shortcut" id="camera-sos-btn">SOS</button>
+      </div>
+
+      <div class="camera-preview" id="camera-preview">
+        <video id="camera-video" autoplay muted playsinline aria-label="Camera preview"></video>
+        <div class="camera-demo-scene" id="camera-demo-scene" aria-hidden="true">
+          <div class="camera-scene-lights"></div>
+          <div class="camera-scene-horizon"></div>
+          <div class="camera-scene-caption">SAFE LINK · PRIVATE PREVIEW</div>
+        </div>
+        <div class="camera-live-indicator ${AppState.safetyRecording.isActive ? "camera-is-live" : ""}" id="camera-live-indicator"><span></span><b>${AppState.safetyRecording.isActive ? AppState.safetyRecording.isPaused ? "RECORDING PAUSED" : "SAFETY RECORDING ACTIVE" : "PREVIEW OFF"}</b></div>
+        <div class="camera-preview-shade"></div>
+        <div class="camera-preview-meta"><span id="camera-preview-status">Demo preview · enable camera for live view</span><span id="camera-recording-clock"></span></div>
+        <button class="camera-flash-toggle" id="camera-flash-btn" aria-label="Toggle flash">⚡ <span>Flash off</span></button>
+      </div>
+      <div class="camera-permission-note" id="camera-permission-note" role="status">${escapeHtml(cameraPermissionMessage)}</div>
+
+      <div class="camera-controls">
+        <button class="camera-control-btn" id="camera-switch-btn"><span>↺</span><small>Switch to ${AppState.cameraFacing === "environment" ? "front" : "back"} camera</small></button>
+        <button class="camera-capture-btn" id="camera-capture-btn" aria-label="Capture photo"><span></span></button>
+        <button class="camera-control-btn camera-record-btn ${AppState.safetyRecording.isActive ? "is-recording" : ""}" id="camera-record-btn"><span>●</span><small>${AppState.safetyRecording.isActive ? "Recording active" : "Record evidence"}</small></button>
+      </div>
+      <div class="safety-recording-panel ${AppState.safetyRecording.isActive ? "is-active" : ""}" id="safety-recording-panel">
+        <div class="safety-recording-title"><span class="${AppState.safetyRecording.isActive ? "recording-dot" : "safety-recording-idle-dot"}"></span><strong>${AppState.safetyRecording.isActive ? AppState.safetyRecording.isPaused ? "SAFETY RECORDING PAUSED" : "SAFETY RECORDING ACTIVE" : "Safety Recording"}</strong></div>
+        <p>${AppState.safetyRecording.isActive ? `Camera: ON · Microphone: ${AppState.safetyRecording.microphoneEnabled ? "ON" : "OFF"} · Duration: <span id="recording-duration">00:00</span>` : "Begin a visible continuous recording session when you choose. Camera and microphone permission will be requested."}</p>
+        ${AppState.safetyRecording.statusMessage ? `<p class="recording-platform-note">${escapeHtml(AppState.safetyRecording.statusMessage)}</p>` : ""}
+        <div class="safety-recording-actions">
+          ${AppState.safetyRecording.isActive ? `
+            <button class="btn-secondary" id="safety-recording-switch">Switch Camera</button>
+            <button class="btn-secondary" id="safety-recording-pause">${AppState.safetyRecording.isPaused ? "Resume" : "Pause"}</button>
+            <button class="btn-secondary" id="safety-recording-mic">${AppState.safetyRecording.microphoneEnabled ? "Mute Mic" : "Unmute Mic"}</button>
+            <button class="btn-primary" id="safety-recording-save">Save Securely</button>
+            <button class="btn-secondary" id="safety-recording-share-action">Share with Safe Circle</button>
+            <label class="camera-share-toggle"><input type="checkbox" id="safety-recording-share"> Save a shared copy (demo)</label>
+            <button class="btn-danger" id="safety-recording-stop">STOP RECORDING</button>
+            <button class="camera-sos-shortcut" id="safety-recording-sos">SOS</button>
+          ` : `
+            <button class="btn-primary" id="safety-recording-start">Start Safety Recording</button>
+            ${microphoneFallbackAvailable ? `<button class="btn-secondary" id="safety-recording-start-muted">Start with camera only</button>` : ""}
+            <button class="btn-secondary" id="camera-demo-preview-toggle">Open camera preview only</button>
+          `}
+        </div>
+        <div class="camera-contact-picker" id="safety-recording-contacts" hidden>
+          ${AppState.safeCircle.map(contact => `<label><input type="checkbox" value="${escapeHtml(contact.id)}"> ${escapeHtml(contact.name)}</label>`).join("")}
+        </div>
+      </div>
+      <div class="camera-save-row">
+        <button class="btn-primary" id="camera-save-btn" disabled>Save Securely</button>
+        <label class="camera-share-toggle"><input type="checkbox" id="camera-share-circle"> Share with Safe Circle</label>
+      </div>
+      <div class="camera-contact-picker" id="camera-contact-picker" hidden>
+        ${AppState.safeCircle.map(contact => `<label><input type="checkbox" value="${escapeHtml(contact.id)}"> ${escapeHtml(contact.name)}</label>`).join("")}
+      </div>
+      <p class="camera-legal-note">Only record where legally permitted and stay safe. Do not confront anyone to capture evidence.</p>
+      <p class="recording-privacy-notice">SafeLink only uses your camera and microphone when you explicitly enable Safety Recording. Recording status will always be visible. A one-time still photo also requires your explicit Capture action and camera-only permission.</p>
+      <section class="evidence-section">
+        <div class="evidence-heading"><div><h4>Recent evidence</h4><small>Stored privately on this device</small></div><span>${evidence.length.toString().padStart(2, "0")}</span></div>
+        ${evidence.length ? `<div class="evidence-list">${evidence.map((item, index) => `
+          <div class="evidence-item">
+            <div class="evidence-thumb">${item.thumbnail ? `<img src="${item.thumbnail}" alt="">` : `<span>${item.type === "video" ? "▶" : "◉"}</span>`}</div>
+            <div class="evidence-detail"><strong>Evidence ${String(AppState.evidence.length - index).padStart(2, "0")}</strong><small>${escapeHtml(item.createdAt)} · ${item.type === "video" ? (item.isDemo ? "Demo recording" : "Video") : item.isDemo ? "Demo photo" : "Photo"}</small></div>
+            <span class="evidence-status">${item.shared ? "Shared with Safe Circle" : "Private"}</span>
+          </div>`).join("")}</div>` : `<div class="evidence-empty">Your saved evidence will appear here. Nothing is shared unless you choose contacts.</div>`}
+      </section>
+    `;
+  }
+
+  function renderVoiceAssistantScreen() {
+    const helper = SafeLinkData.safePoints[2];
+    return `
+      <div class="app-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="icon-btn" id="assistant-back-btn" aria-label="Back to previous screen">←</button>
+          <div><h3 style="font-size:17px;font-weight:700">Safe Assistant</h3><small style="color:var(--text-muted)">Your safety, your choices</small></div>
+        </div>
+        <button class="camera-sos-shortcut" id="assistant-sos-btn">SOS</button>
+      </div>
+      <div class="assistant-listening-card">
+        <div class="assistant-orb" id="assistant-orb"><span>✳</span></div>
+        <div class="assistant-listening-label" id="assistant-listening-label">${isMicrophoneMuted ? "Microphone muted" : "Safe Assistant is listening"}</div>
+        <p>Speak naturally or type a safety command below.</p>
+        <div class="assistant-mic-controls">
+          <button class="btn-secondary" id="assistant-mute-btn">${isMicrophoneMuted ? "Unmute microphone" : "Mute microphone"}</button>
+          <button class="btn-secondary" id="assistant-end-btn">End conversation</button>
+        </div>
+      </div>
+      <div class="assistant-conversation">
+        <div class="assistant-message user-message"><small>You said</small><p id="assistant-transcript">${escapeHtml(AppState.assistantTranscript || "Try: “I feel unsafe”")}</p></div>
+        <div class="assistant-message response-message"><small>Safe Assistant</small><p id="assistant-response">${escapeHtml(AppState.assistantResponse)}</p></div>
+      </div>
+      ${AppState.assistantConfirmation ? `<div class="assistant-confirm-card" id="assistant-confirm-card">
+        <strong>${AppState.assistantConfirmationAction === "call-contact" ? `Call ${escapeHtml(AppState.safeCircle[0]?.name || "your emergency contact")}?` : AppState.assistantConfirmationAction === "share-journey" ? "Share your active journey with your Safe Circle?" : AppState.assistantConfirmationAction === "notify-circle" ? "Send a demo safety update to your Safe Circle?" : "Do you want me to send a SafeLink assistance request?"}</strong>
+        <p>${AppState.assistantConfirmationAction === "help-request" ? "This demo updates the Safe Circle status and nearby helper views with approximate location sharing; no external messages are sent." : AppState.assistantConfirmationAction === "call-contact" ? "Your call app will open after you confirm. SafeLink does not place calls without your approval." : "No external message will be sent by this demo."}</p>
+        <div><button class="btn-danger" id="${AppState.assistantConfirmationAction === "help-request" ? "assistant-confirm-alert" : "assistant-confirm-action"}">${AppState.assistantConfirmationAction === "call-contact" ? "YES, CALL CONTACT" : AppState.assistantConfirmationAction === "share-journey" ? "YES, SHARE JOURNEY" : AppState.assistantConfirmationAction === "notify-circle" ? "YES, SEND UPDATE" : "YES, SEND ALERT"}</button><button class="btn-secondary" id="assistant-cancel-alert">CANCEL</button></div>
+      </div>` : ""}
+      <form class="assistant-input-row" id="assistant-command-form">
+        <input id="assistant-command-input" type="text" placeholder="Type a safety command…" aria-label="Type a safety command">
+        <button class="btn-primary" type="submit">Send</button>
+      </form>
+      <div class="assistant-quick-actions">
+        <button class="btn-danger" id="assistant-request-help">REQUEST HELP</button>
+        <button class="btn-danger" id="assistant-activate-sos">ACTIVATE SOS</button>
+        <button class="btn-secondary" id="assistant-notify-circle">NOTIFY SAFE CIRCLE</button>
+        <button class="btn-secondary" id="assistant-open-camera">OPEN SAFETY CAMERA</button>
+        <a class="btn-secondary" href="tel:112" id="assistant-call-emergency">CONTACT EMERGENCY SERVICES · 112</a>
+      </div>
+      <div class="assistant-safe-point"><span>NEAREST VERIFIED SAFE POINT</span><strong>${helper.name}</strong><small>${helper.distance} · ${helper.hours}</small><button class="btn-secondary" id="assistant-show-safe-point">View on Safety Map</button></div>
+      <p class="assistant-disclaimer">Demo assistant: commands run local prototype workflows only. It cannot contact emergency services automatically or guarantee safety.</p>
+    `;
+  }
+
+  async function startCameraPreview() {
+    if (!document.getElementById("camera-video")) return;
+    syncCameraPreviewUI();
+    if (AppState.demoCameraPreviewOnly) {
+      cameraPermissionMessage = "Guided demo preview only. No camera or microphone permission was requested.";
+    } else if (!cameraStream && !AppState.safetyRecording.isActive) {
+      cameraPermissionMessage = "SafeLink only uses your camera and microphone when you explicitly enable Safety Recording. Recording status will always be visible.";
+    }
+    syncCameraPreviewUI();
+  }
+
+  async function requestCameraStream(withMicrophone) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Camera and microphone access is unavailable in this browser.");
+    }
+    const requestedStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: AppState.cameraFacing } },
+      audio: withMicrophone
+    });
+    if (AppState.currentScreen !== "camera") {
+      requestedStream.getTracks().forEach(track => track.stop());
+      throw new Error("Camera screen closed before permission was granted.");
+    }
+    return requestedStream;
+  }
+
+  function syncCameraPreviewUI() {
+    const video = document.getElementById("camera-video");
+    const scene = document.getElementById("camera-demo-scene");
+    const indicator = document.getElementById("camera-live-indicator");
+    const status = document.getElementById("camera-preview-status");
+    const note = document.getElementById("camera-permission-note");
+    if (!video || !scene || !indicator || !status || !note) return;
+    const hasLiveTrack = cameraStream && cameraStream.getVideoTracks().some(track => track.readyState === "live");
+    if (hasLiveTrack) {
+      video.srcObject = cameraStream;
+      scene.hidden = true;
+      indicator.classList.add("camera-is-live");
+      indicator.querySelector("b").textContent = AppState.safetyRecording.isActive ? AppState.safetyRecording.isPaused ? "RECORDING PAUSED" : "SAFETY RECORDING ACTIVE" : "CAMERA ACTIVE";
+      status.textContent = AppState.safetyRecording.isActive ? `Safety recording ${AppState.safetyRecording.isPaused ? "paused" : "active"} · camera and microphone status shown below` : "Live camera preview · capture only when ready";
+      note.textContent = AppState.safetyRecording.isActive
+        ? "Recording is active only after your explicit start and permission. It stays on this device unless you choose to share."
+        : "Camera preview is active because you requested a photo. Leave the camera screen to turn off the preview.";
+      return;
+    }
+    cameraStream = null;
+    video.srcObject = null;
+    video.style.visibility = "";
+    scene.hidden = false;
+    indicator.classList.remove("camera-is-live");
+    indicator.querySelector("b").textContent = AppState.demoCameraPreviewOnly ? "GUIDED DEMO" : "PREVIEW OFF";
+    status.textContent = AppState.demoCameraPreviewOnly ? "Guided demo preview · camera and microphone are off" : "Preview off · start Safety Recording or capture a photo";
+    note.textContent = cameraPermissionMessage;
+  }
+
+  function stopCameraPreview() {
+    if (AppState.safetyRecording.isActive) return;
+    pendingEvidence = null;
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+    cameraPermissionMessage = "SafeLink only uses your camera and microphone when you explicitly enable Safety Recording. Recording status will always be visible.";
+  }
+
+  function sampleEvidenceImage() {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="900"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#102f59"/><stop offset="1" stop-color="#080d1d"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><circle cx="500" cy="170" r="80" fill="#48cae4" opacity=".35"/><path d="M0 590 Q170 480 320 590T640 560V900H0" fill="#12274a"/><text x="320" y="780" fill="#d5eaf5" font-family="sans-serif" font-size="24" text-anchor="middle">SafeLink evidence</text></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }
+
+  async function captureCameraEvidence() {
+    const video = document.getElementById("camera-video");
+    if (!cameraStream) {
+      try {
+        cameraPermissionMessage = "Requesting camera permission for your photo…";
+        syncCameraPreviewUI();
+        cameraStream = await requestCameraStream(false);
+        cameraPermissionMessage = "Photo preview active. Recording has not started.";
+        syncCameraPreviewUI();
+      } catch (error) {
+        console.warn("Unable to open camera for photo capture:", error);
+        cameraPermissionMessage = `${error.message} Try the demo preview or check browser permissions.`;
+        syncCameraPreviewUI();
+        showToast("Camera access is unavailable. No photo was captured.");
+        return;
+      }
+    }
+    if (!video || !video.videoWidth) {
+      showToast("Camera is still starting. Try the capture button again in a moment.");
+      return;
+    }
+    let image;
+    try {
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(1, 1280 / video.videoWidth);
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+      image = canvas.toDataURL("image/jpeg", 0.78);
+      const thumbnailCanvas = document.createElement("canvas");
+      const thumbnailScale = Math.min(1, 240 / video.videoWidth);
+      thumbnailCanvas.width = Math.round(video.videoWidth * thumbnailScale);
+      thumbnailCanvas.height = Math.round(video.videoHeight * thumbnailScale);
+      thumbnailCanvas.getContext("2d").drawImage(video, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height);
+      pendingEvidence = {
+        type: "photo",
+        data: image,
+        blob: dataUrlToBlob(image),
+        thumbnail: thumbnailCanvas.toDataURL("image/jpeg", 0.58),
+        isDemo: false
+      };
+    } catch (error) {
+      console.error("Unable to capture photo from camera:", error);
+      showToast("Could not capture a photo from the camera.");
+      return;
+    }
+    const preview = document.getElementById("camera-preview");
+    preview.style.backgroundImage = `url("${image}")`;
+    preview.classList.add("has-capture");
+    if (video) video.style.visibility = "hidden";
+    const saveButton = document.getElementById("camera-save-btn");
+    saveButton.disabled = false;
+    saveButton.textContent = "Save Securely";
+    showToast("Photo captured. Save it privately or discard by leaving the screen.");
+  }
+
+  async function savePendingEvidence() {
+    if (!pendingEvidence) {
+      showToast("Capture a photo or finish a recording before saving.");
+      return;
+    }
+    const selectedContacts = document.querySelectorAll("#camera-contact-picker input:checked");
+    const selectedContactIds = [...selectedContacts].map(input => input.value);
+    const shared = document.getElementById("camera-share-circle").checked && selectedContactIds.length > 0;
+    const record = {
+      id: `evidence-${Date.now()}`,
+      type: pendingEvidence.type,
+      createdAt: new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
+      shared,
+      sharedWith: shared ? AppState.safeCircle.filter(contact => selectedContactIds.includes(contact.id)).map(contact => contact.name) : [],
+      isDemo: pendingEvidence.isDemo,
+      thumbnail: pendingEvidence.thumbnail
+    };
+    if (pendingEvidence.blob) {
+      try {
+        await saveVideoBlob(record.id, pendingEvidence.blob);
+      } catch (error) {
+        console.error("Unable to store private camera evidence:", error);
+        showToast("Could not securely store the photo or video. Check browser storage and try again.");
+        return;
+      }
+    }
+    const updatedEvidence = [record, ...AppState.evidence].slice(0, 10);
+    try {
+      localStorage.setItem(evidenceStorageKey, JSON.stringify(updatedEvidence));
+    } catch (error) {
+      console.error("Unable to save private evidence metadata:", error);
+      showToast("Could not save evidence on this device. Check available browser storage.");
+      return;
+    }
+    AppState.evidence = updatedEvidence;
+    pendingEvidence = null;
+    renderCurrentViews();
+    showToast(shared
+      ? "Evidence saved locally. Safe Circle sharing is demo-only; no external upload was made."
+      : "Evidence saved privately on this device. It was not shared publicly.");
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const [metadata, content] = dataUrl.split(",");
+    const mimeType = metadata.match(/data:(.*?);base64/)?.[1] || "application/octet-stream";
+    const binary = atob(content);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return new Blob([bytes], { type: mimeType });
+  }
+
+  function saveVideoBlob(id, blob) {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error("Private video storage is unavailable."));
+        return;
+      }
+      const request = indexedDB.open("safelink-private-media", 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("evidence", { keyPath: "id" });
+      request.onerror = () => reject(request.error || new Error("Could not open private media storage."));
+      request.onsuccess = () => {
+        const database = request.result;
+        let transaction;
+        try {
+          transaction = database.transaction("evidence", "readwrite");
+          transaction.objectStore("evidence").put({ id, blob });
+        } catch (error) {
+          database.close();
+          reject(error);
+          return;
+        }
+        transaction.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+        transaction.onerror = () => {
+          database.close();
+          reject(transaction.error || new Error("Could not write private video evidence."));
+        };
+        transaction.onabort = () => {
+          database.close();
+          reject(transaction.error || new Error("Private video storage transaction was aborted."));
+        };
+      };
+    });
+  }
+
+  function currentRecordingDurationSeconds() {
+    if (!AppState.safetyRecording.isActive) return AppState.safetyRecording.elapsedBeforePause;
+    return AppState.safetyRecording.elapsedBeforePause
+      + (AppState.safetyRecording.isPaused ? 0 : Math.floor((Date.now() - AppState.safetyRecording.startedAt) / 1000));
+  }
+
+  function formatRecordingDuration(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
+  function updateRecordingIndicators() {
+    const state = AppState.safetyRecording;
+    const duration = formatRecordingDuration(currentRecordingDurationSeconds());
+    const fixed = document.getElementById("safety-recording-persistent");
+    if (fixed) {
+      fixed.hidden = !state.isActive;
+      if (state.isActive) {
+        const signature = `${state.isPaused}-${state.microphoneEnabled}-${state.statusMessage}`;
+        if (fixed.dataset.signature !== signature) {
+          fixed.dataset.signature = signature;
+          fixed.innerHTML = `
+            <div class="persistent-recording-status"><span class="recording-dot"></span><strong>SAFETY RECORDING ${state.isPaused ? "PAUSED" : "ACTIVE"}</strong><span id="persistent-recording-duration">${duration}</span><span>Camera ON · Mic ${state.microphoneEnabled ? "ON" : "OFF"}</span></div>
+            ${state.statusMessage ? `<small>${escapeHtml(state.statusMessage)}</small>` : ""}
+            <div class="persistent-recording-actions">
+              <button id="persistent-recording-camera">Recording controls</button>
+              <button id="persistent-recording-pause">${state.isPaused ? "Resume" : "Pause"}</button>
+              <button id="persistent-recording-sos">SOS</button>
+              <button class="stop-recording-mini" id="persistent-recording-stop">STOP RECORDING</button>
+            </div>`;
+          bindPersistentRecordingControls();
+        } else {
+          const durationElement = document.getElementById("persistent-recording-duration");
+          if (durationElement) durationElement.textContent = duration;
+        }
+      } else {
+        fixed.dataset.signature = "";
+        fixed.innerHTML = "";
+      }
+    }
+    const time = document.getElementById("recording-duration");
+    if (time) time.textContent = duration;
+    const clock = document.getElementById("camera-recording-clock");
+    if (clock && state.isActive) clock.textContent = `${state.isPaused ? "Ⅱ" : "●"} ${duration}`;
+  }
+
+  function bindPersistentRecordingControls() {
+    const bind = (id, action) => {
+      const button = document.getElementById(id);
+      if (button) button.addEventListener("click", action);
+    };
+    bind("persistent-recording-camera", () => navigateTo("camera"));
+    bind("persistent-recording-pause", toggleSafetyRecordingPause);
+    bind("persistent-recording-sos", openSOSScreen);
+    bind("persistent-recording-stop", () => stopSafetyRecording());
+  }
+
+  function startRecorderSegment() {
+    if (!cameraStream || !window.MediaRecorder) throw new Error("Video recording is not supported in this browser.");
+    cameraRecordingChunks = [];
+    cameraRecorder = new MediaRecorder(cameraStream);
+    cameraRecorder.ondataavailable = event => {
+      if (event.data.size) cameraRecordingChunks.push(event.data);
+    };
+    cameraRecorder.onerror = event => {
+      console.error("Safety Recording encountered a browser media error:", event.error);
+      AppState.safetyRecording.statusMessage = "The browser reported a recording error. Stop recording and save any available footage.";
+      updateRecordingIndicators();
+    };
+    cameraRecorder.start(1000);
+  }
+
+  async function startSafetyRecording(withMicrophone = true) {
+    if (AppState.safetyRecording.isActive || cameraRequestPending) return;
+    if (!window.MediaRecorder) {
+      AppState.safetyRecording.statusMessage = "This browser cannot record video. Camera preview and photo capture may still be available.";
+      microphoneFallbackAvailable = withMicrophone;
+      cameraPermissionMessage = AppState.safetyRecording.statusMessage;
+      renderCurrentViews();
+      return;
+    }
+    cameraRequestPending = true;
+    AppState.safetyRecording.statusMessage = "Requesting camera and microphone permission…";
+    renderCurrentViews();
+    try {
+      cameraStream = await requestCameraStream(withMicrophone);
+      if (!cameraStream.getVideoTracks().some(track => track.readyState === "live")) {
+        throw new Error("Camera permission was not granted.");
+      }
+      const audioTracks = cameraStream.getAudioTracks();
+      AppState.safetyRecording.isActive = true;
+      AppState.safetyRecording.isPaused = false;
+      AppState.safetyRecording.microphoneEnabled = withMicrophone && audioTracks.length > 0;
+      AppState.safetyRecording.startedAt = Date.now();
+      AppState.safetyRecording.elapsedBeforePause = 0;
+      AppState.safetyRecording.locationSharing = AppState.activeJourney.isActive || AppState.activeHelpRequest.isActive ? "approximate" : "off";
+      AppState.safetyRecording.statusMessage = document.hidden
+        ? "Background camera access may be paused by your device or browser."
+        : "Camera and microphone are active only after your permission.";
+      microphoneFallbackAvailable = false;
+      recordedVideoSegments = [];
+      pendingEvidence = null;
+      cameraPermissionMessage = AppState.safetyRecording.statusMessage;
+      cameraStream.getTracks().forEach(track => {
+        track.onended = handleRecordingTrackEnded;
+        track.onmute = handleRecordingTrackMuted;
+        track.onunmute = handleRecordingTrackUnmuted;
+      });
+      startRecorderSegment();
+      recordingTimer = setInterval(updateRecordingIndicators, 500);
+      renderCurrentViews();
+      updateRecordingIndicators();
+      SafeLinkAudio.playSuccess();
+      showToast(`Safety Recording started. Camera ON, microphone ${AppState.safetyRecording.microphoneEnabled ? "ON" : "OFF"}.`);
+    } catch (error) {
+      console.warn("Unable to start Safety Recording:", error);
+      if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream = null;
+      microphoneFallbackAvailable = withMicrophone;
+      AppState.safetyRecording.isActive = false;
+      AppState.safetyRecording.statusMessage = withMicrophone
+        ? "Camera and microphone permission is required to start with audio. You can retry with the microphone off."
+        : `Camera-only recording could not start: ${error.message}`;
+      cameraPermissionMessage = AppState.safetyRecording.statusMessage;
+      renderCurrentViews();
+      showToast(withMicrophone ? "Recording did not start. Grant permissions or choose camera-only recording." : "Camera-only recording could not start. Check camera permission and browser support.");
+    } finally {
+      cameraRequestPending = false;
+    }
+  }
+
+  function handleRecordingTrackEnded() {
+    if (!AppState.safetyRecording.isActive || recordingSwitchInProgress) return;
+    AppState.safetyRecording.statusMessage = "Your device ended media access. Recording has stopped.";
+    stopSafetyRecording(true);
+  }
+
+  function handleRecordingTrackMuted() {
+    if (!AppState.safetyRecording.isActive) return;
+    AppState.safetyRecording.statusMessage = "Your device or browser paused media access. Keep this app visible if recording must continue.";
+    updateRecordingIndicators();
+  }
+
+  function handleRecordingTrackUnmuted() {
+    if (!AppState.safetyRecording.isActive) return;
+    AppState.safetyRecording.statusMessage = "";
+    updateRecordingIndicators();
+  }
+
+  function toggleSafetyRecordingPause() {
+    const state = AppState.safetyRecording;
+    if (!state.isActive || !cameraRecorder) return;
+    if (state.isPaused) {
+      try {
+        cameraRecorder.resume();
+        state.startedAt = Date.now();
+        state.isPaused = false;
+        state.statusMessage = "";
+      } catch (error) {
+        console.error("Unable to resume Safety Recording:", error);
+        state.statusMessage = "Recording could not resume. Stop the recording and try again.";
+      }
+    } else {
+      try {
+        cameraRecorder.pause();
+        state.elapsedBeforePause += Math.floor((Date.now() - state.startedAt) / 1000);
+        state.isPaused = true;
+      } catch (error) {
+        console.error("Unable to pause Safety Recording:", error);
+        state.statusMessage = "Recording could not be paused by this browser.";
+      }
+    }
+    renderCurrentViews();
+    updateRecordingIndicators();
+  }
+
+  function muteSafetyRecordingMicrophone() {
+    if (!AppState.safetyRecording.isActive || !cameraStream) return;
+    const nextEnabled = !AppState.safetyRecording.microphoneEnabled;
+    cameraStream.getAudioTracks().forEach(track => { track.enabled = nextEnabled; });
+    AppState.safetyRecording.microphoneEnabled = nextEnabled;
+    AppState.safetyRecording.statusMessage = nextEnabled ? "" : "Microphone muted. Video recording continues.";
+    renderCurrentViews();
+    updateRecordingIndicators();
+  }
+
+  async function switchSafetyRecordingCamera() {
+    if (!AppState.safetyRecording.isActive || !cameraStream || recordingSwitchInProgress) return;
+    recordingSwitchInProgress = true;
+    const wasPaused = AppState.safetyRecording.isPaused;
+    const previousStream = cameraStream;
+    AppState.cameraFacing = AppState.cameraFacing === "environment" ? "user" : "environment";
+    try {
+      const replacementVideoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: AppState.cameraFacing } },
+        audio: false
+      });
+      const nextVideoTrack = replacementVideoStream.getVideoTracks()[0];
+      if (!nextVideoTrack) throw new Error("The selected camera is unavailable.");
+      const oldRecorder = cameraRecorder;
+      if (oldRecorder && oldRecorder.state !== "inactive") {
+        await new Promise(resolve => {
+          oldRecorder.addEventListener("stop", resolve, { once: true });
+          oldRecorder.stop();
+        });
+        const segment = new Blob(cameraRecordingChunks, { type: oldRecorder.mimeType || "video/webm" });
+        if (segment.size) recordedVideoSegments.push(segment);
+      }
+      const audioTracks = previousStream.getAudioTracks();
+      previousStream.getVideoTracks().forEach(track => {
+        track.onended = null;
+        track.onmute = null;
+        track.onunmute = null;
+        track.stop();
+      });
+      cameraStream = new MediaStream([nextVideoTrack, ...audioTracks]);
+      nextVideoTrack.onended = handleRecordingTrackEnded;
+      nextVideoTrack.onmute = handleRecordingTrackMuted;
+      nextVideoTrack.onunmute = handleRecordingTrackUnmuted;
+      audioTracks.forEach(track => {
+        track.onended = handleRecordingTrackEnded;
+        track.onmute = handleRecordingTrackMuted;
+        track.onunmute = handleRecordingTrackUnmuted;
+      });
+      startRecorderSegment();
+      if (wasPaused) cameraRecorder.pause();
+      renderCurrentViews();
+      showToast(`Switched to ${AppState.cameraFacing === "environment" ? "back" : "front"} camera.`);
+    } catch (error) {
+      console.error("Unable to switch Safety Recording camera:", error);
+      AppState.safetyRecording.statusMessage = `Camera switch failed: ${error.message}`;
+      renderCurrentViews();
+      showToast("Could not switch camera. The recording may need to be stopped.");
+    } finally {
+      recordingSwitchInProgress = false;
+    }
+  }
+
+  async function flushCurrentRecordingSegment() {
+    if (!cameraRecorder || cameraRecorder.state === "inactive") return;
+    if (cameraRecorder.state === "paused") cameraRecorder.resume();
+    await new Promise(resolve => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      cameraRecorder.addEventListener("dataavailable", finish, { once: true });
+      cameraRecorder.requestData();
+      setTimeout(finish, 1200);
+    });
+  }
+
+  function selectedRecordingContacts(selector) {
+    return [...document.querySelectorAll(`${selector} input:checked`)].map(input => input.value).filter(value => value !== "all");
+  }
+
+  async function saveRecordingSnapshot(isEmergency = false) {
+    if (!AppState.safetyRecording.isActive || recordingSnapshotInProgress) return;
+    recordingSnapshotInProgress = true;
+    try {
+      if (!AppState.safetyRecording.isPaused) await flushCurrentRecordingSegment();
+      const segments = [...recordedVideoSegments];
+      if (cameraRecordingChunks.length) segments.push(new Blob(cameraRecordingChunks, { type: cameraRecorder?.mimeType || "video/webm" }));
+      if (!segments.length || segments.every(segment => !segment.size)) throw new Error("There is no recorded video data to save yet.");
+      const selected = isEmergency ? [] : selectedRecordingContacts("#safety-recording-contacts");
+      const share = document.getElementById("safety-recording-share");
+      await persistPrivateRecording(segments, Boolean(!isEmergency && share?.checked && selected.length), selected);
+      if (isEmergency) AppState.safetyRecording.sosSnapshotStatus = "Current recording snapshot saved privately on this device. It was not shared.";
+      showToast(share?.checked && selected.length
+        ? "Recording snapshot saved locally. Sharing is selected for the Safe Circle demo; no external upload was made."
+        : "Recording snapshot saved privately on this device.");
+    } catch (error) {
+      console.error("Unable to save Safety Recording snapshot:", error);
+      if (isEmergency) AppState.safetyRecording.sosSnapshotStatus = "Could not save the current recording snapshot. Recording remains active.";
+      showToast(`Could not save the recording snapshot: ${error.message}`);
+    } finally {
+      recordingSnapshotInProgress = false;
+      if (AppState.currentScreen === "camera" || AppState.currentScreen === "sos") renderCurrentViews();
+      else updateRecordingIndicators();
+    }
+  }
+
+  async function shareCurrentRecordingWithCircle() {
+    const picker = document.getElementById("safety-recording-contacts");
+    const selected = selectedRecordingContacts("#safety-recording-contacts");
+    if (!selected.length) {
+      picker.hidden = false;
+      showToast("Choose one or more Safe Circle contacts, then select Share with Safe Circle again.");
+      return;
+    }
+    document.getElementById("safety-recording-share").checked = true;
+    await saveRecordingSnapshot();
+  }
+
+  async function persistPrivateRecording(segments, shared, contactIds) {
+    const id = `evidence-${Date.now()}`;
+    await saveVideoBlob(id, segments.length === 1 ? segments[0] : segments);
+    const record = {
+      id,
+      type: "video",
+      createdAt: new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" }),
+      shared,
+      sharedWith: shared ? AppState.safeCircle.filter(contact => contactIds.includes(contact.id)).map(contact => contact.name) : [],
+      isDemo: false,
+      thumbnail: sampleEvidenceImage()
+    };
+    const updated = [record, ...AppState.evidence].slice(0, 10);
+    try {
+      localStorage.setItem(evidenceStorageKey, JSON.stringify(updated));
+    } catch (error) {
+      console.error("Unable to save private recording metadata:", error);
+      throw new Error("Recording bytes are stored locally, but its evidence entry could not be saved.");
+    }
+    AppState.evidence = updated;
+    return record;
+  }
+
+  async function stopSafetyRecording(trackEnded = false) {
+    if (!AppState.safetyRecording.isActive || recordingSwitchInProgress) return;
+    const wasPaused = AppState.safetyRecording.isPaused;
+    AppState.safetyRecording.elapsedBeforePause = currentRecordingDurationSeconds();
+    AppState.safetyRecording.isActive = false;
+    AppState.safetyRecording.isPaused = false;
+    AppState.safetyRecording.startedAt = null;
+    AppState.safetyRecording.microphoneEnabled = false;
+    if (recordingTimer) clearInterval(recordingTimer);
+    recordingTimer = null;
+    if (cameraRecorder && cameraRecorder.state !== "inactive") {
+      if (wasPaused) cameraRecorder.resume();
+      await new Promise(resolve => {
+        cameraRecorder.addEventListener("stop", resolve, { once: true });
+        cameraRecorder.stop();
+      });
+      const segment = new Blob(cameraRecordingChunks, { type: cameraRecorder.mimeType || "video/webm" });
+      if (segment.size) recordedVideoSegments.push(segment);
+    }
+    cameraRecorder = null;
+    if (cameraStream) cameraStream.getTracks().forEach(track => {
+      track.onended = null;
+      track.onmute = null;
+      track.onunmute = null;
+      track.stop();
+    });
+    cameraStream = null;
+    const clips = recordedVideoSegments.filter(segment => segment.size);
+    pendingStoppedRecording = clips.length ? clips : null;
+    recordedVideoSegments = [];
+    cameraRecordingChunks = [];
+    AppState.safetyRecording.statusMessage = trackEnded
+      ? "The browser or operating system ended camera access."
+      : "Recording stopped. Choose whether to save it privately or discard it.";
+    renderCurrentViews();
+    if (pendingStoppedRecording) {
+      document.getElementById("recording-stopped-modal").classList.add("active");
+    } else {
+      showToast(trackEnded ? "Camera access ended. No video data was available to save." : "Recording stopped. No video data was captured.");
+    }
+  }
+
+  async function saveStoppedRecording() {
+    if (!pendingStoppedRecording) return;
+    const contacts = selectedRecordingContacts("#recording-review-contacts");
+    const share = document.getElementById("recording-review-share").checked && contacts.length > 0;
+    const segments = pendingStoppedRecording;
+    try {
+      await persistPrivateRecording(segments, share, contacts);
+      pendingStoppedRecording = null;
+      closeAllModals();
+      if (AppState.currentScreen === "camera") renderCurrentViews();
+      showToast(share ? "Recording saved locally. Selected Safe Circle sharing is demo-only; no external upload was made." : "Recording saved privately on this device.");
+    } catch (error) {
+      console.error("Unable to save stopped recording:", error);
+      showToast(`Could not save the recording: ${error.message}`);
+    }
+  }
+
+  function discardStoppedRecording() {
+    pendingStoppedRecording = null;
+    recordedVideoSegments = [];
+    cameraRecordingChunks = [];
+    closeAllModals();
+    showToast("Recording discarded. No footage was saved.");
+  }
+
+  function toggleEvidenceRecording() {
+    if (AppState.safetyRecording.isActive) stopSafetyRecording();
+    else startSafetyRecording(true);
+  }
+
+  function stopVoiceRecognition() {
+    if (voiceRecognition) {
+      voiceRecognition.onresult = null;
+      voiceRecognition.onend = null;
+      voiceRecognition.stop();
+      voiceRecognition = null;
+    }
+  }
+
+  function speakAssistantResponse(message) {
+    if (!window.speechSynthesis || isMicrophoneMuted) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function updateAssistantMessage(transcript, response, requiresConfirmation = false, confirmationAction = "help-request") {
+    AppState.assistantTranscript = transcript;
+    AppState.assistantResponse = response;
+    AppState.assistantConfirmation = requiresConfirmation;
+    AppState.assistantConfirmationAction = requiresConfirmation ? confirmationAction : "";
+    renderCurrentViews();
+    speakAssistantResponse(response);
+  }
+
+  function processAssistantCommand(command) {
+    const text = command.trim();
+    const normalized = text.toLowerCase();
+    if (!text) return;
+    if (/feel unsafe|need help|send an alert|send alert|help me/.test(normalized)) {
+      updateAssistantMessage(text, "I’m here with you. Do you want me to send a SafeLink assistance request?", true);
+    } else if (/start my journey|start journey/.test(normalized)) {
+      updateAssistantMessage(text, "Let’s set up your journey and choose who can follow your progress.");
+      navigateTo("journey");
+    } else if (/activate sos|emergency sos/.test(normalized)) {
+      updateAssistantMessage(text, "I’ll ask you to confirm before activating SOS.");
+      openSOSScreen();
+    } else if (/call my emergency contact|call emergency contact/.test(normalized)) {
+      updateAssistantMessage(text, `Do you want to call ${AppState.safeCircle[0]?.name || "your emergency contact"}?`, true, "call-contact");
+    } else if (/share my journey|share journey/.test(normalized)) {
+      if (AppState.activeJourney.isActive) {
+        updateAssistantMessage(text, "Do you want to share your active journey with your Safe Circle?", true, "share-journey");
+      } else {
+        updateAssistantMessage(text, "Start a journey first, then you can share its progress with your Safe Circle.");
+        navigateTo("journey");
+      }
+    } else if (/notify (my )?safe circle|send.*safe circle/.test(normalized)) {
+      updateAssistantMessage(text, "Do you want to send a demo safety update to your Safe Circle?", true, "notify-circle");
+    } else if (/i am safe|i'm safe|im safe|safe now/.test(normalized)) {
+      AppState.activeJourney.isActive = false;
+      AppState.activeJourney.isOverdue = false;
+      if (AppState.activeJourney.intervalId) clearInterval(AppState.activeJourney.intervalId);
+      AppState.activeHelpRequest.isActive = false;
+      AppState.activeHelpRequest.status = "resolved";
+      AppState.sosActive = false;
+      updateAssistantMessage(text, "I’m glad you’re safe. Your journey and active help request have been closed in this demo.");
+      showToast("Safe status confirmed. Journey and help request ended.");
+      navigateTo("home");
+    } else if (/start a check.?in|check.?in/.test(normalized)) {
+      updateAssistantMessage(text, "Your journey check-in is ready. Confirm your status when you arrive.");
+      navigateTo("checkin");
+    } else if (/open (the )?safety camera|safety camera|open camera/.test(normalized)) {
+      updateAssistantMessage(text, "Opening the private Safety Camera. Live camera access will ask for permission.");
+      navigateTo("camera");
+    } else if (/nearest safe point|safe point/.test(normalized)) {
+      const point = SafeLinkData.safePoints[2];
+      updateAssistantMessage(text, `The nearest listed verified safe point is ${point.name}, ${point.distance} away. This is demo map data.`);
+    } else {
+      updateAssistantMessage(text, "I can help you start a journey, request help, contact a trusted person, open the safety camera, or find a nearby safe point.");
+    }
+  }
+
+  function confirmAssistantPendingAction() {
+    const action = AppState.assistantConfirmationAction;
+    const transcript = AppState.assistantTranscript;
+    AppState.assistantConfirmation = false;
+    AppState.assistantConfirmationAction = "";
+    if (action === "help-request") {
+      handleCreateHelpRequest("I feel unsafe");
+      navigateTo("help-response");
+    } else if (action === "call-contact") {
+      const contact = AppState.safeCircle[0];
+      if (contact) {
+        updateAssistantMessage(transcript, `Opening a call to ${contact.name}. Confirm any external call in your phone dialer.`);
+        triggerPhoneCall(contact.name, contact.phone, "☎");
+      } else {
+        updateAssistantMessage(transcript, "There is no emergency contact in your Safe Circle yet.");
+      }
+    } else if (action === "share-journey") {
+      updateAssistantMessage(transcript, "Journey shared in the Safe Circle demo view; no external message was sent.");
+      showToast("Journey shared in the Safe Circle demo view; no external message was sent.");
+    } else if (action === "notify-circle") {
+      updateAssistantMessage(transcript, "Your Safe Circle demo status has been updated. No external message was sent.");
+      showToast("Safe Circle demo status updated.");
+    }
+  }
+
+  function setupSafetyFeatureListeners() {
+    const homeSos = document.getElementById("home-sos-btn");
+    if (homeSos) homeSos.addEventListener("click", openSOSScreen);
+    ["home-safety-camera-btn", "btn-journey-camera"].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.addEventListener("click", () => navigateTo("camera"));
+    });
+    ["home-safe-assistant-btn", "btn-journey-assistant"].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.addEventListener("click", () => navigateTo("assistant"));
+    });
+
+    const cameraBack = document.getElementById("camera-back-btn");
+    if (cameraBack) cameraBack.addEventListener("click", () => navigateTo(AppState.activeJourney.isActive ? "journey" : "home"));
+    const cameraSos = document.getElementById("camera-sos-btn");
+    if (cameraSos) cameraSos.addEventListener("click", openSOSScreen);
+    if (document.getElementById("camera-video")) {
+      startCameraPreview();
+      document.getElementById("camera-capture-btn").addEventListener("click", captureCameraEvidence);
+      document.getElementById("camera-save-btn").addEventListener("click", savePendingEvidence);
+      document.getElementById("camera-record-btn").addEventListener("click", toggleEvidenceRecording);
+      document.getElementById("camera-share-circle").addEventListener("change", event => {
+        document.getElementById("camera-contact-picker").hidden = !event.target.checked;
+      });
+      document.getElementById("camera-flash-btn").addEventListener("click", event => {
+        AppState.cameraFlashOn = !AppState.cameraFlashOn;
+        event.currentTarget.classList.toggle("is-on", AppState.cameraFlashOn);
+        event.currentTarget.querySelector("span").textContent = AppState.cameraFlashOn ? "Flash on" : "Flash off";
+        const track = cameraStream && cameraStream.getVideoTracks()[0];
+        if (track && track.getCapabilities && track.getCapabilities().torch) {
+          track.applyConstraints({ advanced: [{ torch: AppState.cameraFlashOn }] }).catch(error => {
+            console.warn("Camera flash could not be changed:", error);
+            showToast("This camera does not support flash control.");
+          });
+        } else {
+          showToast("Flash preference updated. This camera does not expose a torch.");
+        }
+      });
+      document.getElementById("camera-switch-btn").addEventListener("click", async () => {
+        if (AppState.safetyRecording.isActive) {
+          await switchSafetyRecordingCamera();
+          return;
+        }
+        const previousFacing = AppState.cameraFacing;
+        AppState.cameraFacing = AppState.cameraFacing === "environment" ? "user" : "environment";
+        if (!cameraStream) {
+          cameraPermissionMessage = `Selected ${AppState.cameraFacing === "user" ? "front" : "back"} camera. Capture a photo or start Safety Recording to enable it.`;
+          renderCurrentViews();
+          return;
+        }
+        try {
+          const replacement = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: AppState.cameraFacing } },
+            audio: false
+          });
+          const currentAudioTracks = cameraStream.getAudioTracks();
+          cameraStream.getVideoTracks().forEach(track => track.stop());
+          cameraStream = new MediaStream([...replacement.getVideoTracks(), ...currentAudioTracks]);
+          renderCurrentViews();
+        } catch (error) {
+          AppState.cameraFacing = previousFacing;
+          console.warn("Unable to switch preview camera:", error);
+          showToast("Could not switch camera. Check camera permission and device support.");
+        }
+      });
+
+      const startRecording = document.getElementById("safety-recording-start");
+      if (startRecording) startRecording.addEventListener("click", () => startSafetyRecording(true));
+      const startMuted = document.getElementById("safety-recording-start-muted");
+      if (startMuted) startMuted.addEventListener("click", () => startSafetyRecording(false));
+      const demoPreview = document.getElementById("camera-demo-preview-toggle");
+      if (demoPreview) demoPreview.addEventListener("click", () => {
+        AppState.demoCameraPreviewOnly = true;
+        cameraPermissionMessage = "Guided demo preview only. No camera or microphone permission was requested.";
+        renderCurrentViews();
+      });
+      const pauseRecording = document.getElementById("safety-recording-pause");
+      if (pauseRecording) pauseRecording.addEventListener("click", toggleSafetyRecordingPause);
+      const muteRecording = document.getElementById("safety-recording-mic");
+      if (muteRecording) muteRecording.addEventListener("click", muteSafetyRecordingMicrophone);
+      const stopRecording = document.getElementById("safety-recording-stop");
+      if (stopRecording) stopRecording.addEventListener("click", () => stopSafetyRecording());
+      const saveRecording = document.getElementById("safety-recording-save");
+      if (saveRecording) saveRecording.addEventListener("click", () => saveRecordingSnapshot());
+      const shareRecording = document.getElementById("safety-recording-share-action");
+      if (shareRecording) shareRecording.addEventListener("click", shareCurrentRecordingWithCircle);
+      const sosRecording = document.getElementById("safety-recording-sos");
+      if (sosRecording) sosRecording.addEventListener("click", openSOSScreen);
+      const shareToggle = document.getElementById("safety-recording-share");
+      if (shareToggle) shareToggle.addEventListener("change", event => {
+        document.getElementById("safety-recording-contacts").hidden = !event.target.checked;
+      });
+    }
+
+    const assistantBack = document.getElementById("assistant-back-btn");
+    if (assistantBack) assistantBack.addEventListener("click", () => navigateTo("home"));
+    const assistantSos = document.getElementById("assistant-sos-btn");
+    if (assistantSos) assistantSos.addEventListener("click", openSOSScreen);
+    const assistantForm = document.getElementById("assistant-command-form");
+    if (assistantForm) assistantForm.addEventListener("submit", event => {
+      event.preventDefault();
+      processAssistantCommand(document.getElementById("assistant-command-input").value);
+    });
+    const muteButton = document.getElementById("assistant-mute-btn");
+    if (muteButton) muteButton.addEventListener("click", () => {
+      isMicrophoneMuted = !isMicrophoneMuted;
+      muteButton.textContent = isMicrophoneMuted ? "Unmute microphone" : "Mute microphone";
+      const label = document.getElementById("assistant-listening-label");
+      label.textContent = isMicrophoneMuted ? "Microphone muted" : "Safe Assistant is listening";
+      if (isMicrophoneMuted) stopVoiceRecognition();
+      else {
+        voiceInputUnavailable = false;
+        beginVoiceRecognition();
+      }
+    });
+    const endButton = document.getElementById("assistant-end-btn");
+    if (endButton) endButton.addEventListener("click", () => {
+      stopVoiceRecognition();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      isMicrophoneMuted = true;
+      navigateTo("home");
+    });
+    const confirmButton = document.getElementById("assistant-confirm-alert");
+    if (confirmButton) confirmButton.addEventListener("click", confirmAssistantPendingAction);
+    const confirmActionButton = document.getElementById("assistant-confirm-action");
+    if (confirmActionButton) confirmActionButton.addEventListener("click", confirmAssistantPendingAction);
+    const cancelButton = document.getElementById("assistant-cancel-alert");
+    if (cancelButton) cancelButton.addEventListener("click", () => {
+      updateAssistantMessage(AppState.assistantTranscript, "Okay. No action was taken. You can still use the camera or choose another safety option.");
+    });
+    const requestButton = document.getElementById("assistant-request-help");
+    if (requestButton) requestButton.addEventListener("click", () => updateAssistantMessage("I need help", "Do you want me to send a SafeLink assistance request?", true));
+    const activateButton = document.getElementById("assistant-activate-sos");
+    if (activateButton) activateButton.addEventListener("click", openSOSScreen);
+    const notifyButton = document.getElementById("assistant-notify-circle");
+    if (notifyButton) notifyButton.addEventListener("click", () => {
+      updateAssistantMessage("Notify my Safe Circle", "Your Safe Circle has been notified in this demo. No external message was sent.");
+      showToast("Safe Circle notification simulated in demo.");
+    });
+    const cameraButton = document.getElementById("assistant-open-camera");
+    if (cameraButton) cameraButton.addEventListener("click", () => navigateTo("camera"));
+    const safePointButton = document.getElementById("assistant-show-safe-point");
+    if (safePointButton) safePointButton.addEventListener("click", () => navigateTo("map"));
+    const sosRecordingControls = document.getElementById("sos-recording-controls");
+    if (sosRecordingControls) sosRecordingControls.addEventListener("click", () => navigateTo("camera"));
+    if (assistantForm && !isMicrophoneMuted) beginVoiceRecognition();
+  }
+
+  function beginVoiceRecognition() {
+    if (voiceRecognition || isMicrophoneMuted || voiceInputUnavailable) return;
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const label = document.getElementById("assistant-listening-label");
+    if (!Recognition) {
+      if (label) label.textContent = "Voice input unavailable · type a command below";
+      return;
+    }
+    try {
+      voiceRecognition = new Recognition();
+      voiceRecognition.lang = "en-US";
+      voiceRecognition.interimResults = false;
+      voiceRecognition.onresult = event => processAssistantCommand(event.results[0][0].transcript);
+      voiceRecognition.onerror = event => {
+        if (event.error !== "no-speech" && event.error !== "aborted") {
+          voiceInputUnavailable = true;
+          console.warn("Voice recognition unavailable:", event.error);
+          const currentLabel = document.getElementById("assistant-listening-label");
+          if (currentLabel) currentLabel.textContent = "Voice input unavailable · type a command below";
+        }
+        voiceRecognition = null;
+      };
+      voiceRecognition.onend = () => {
+        voiceRecognition = null;
+        if (!voiceInputUnavailable && !isMicrophoneMuted && AppState.currentScreen === "assistant") {
+          setTimeout(beginVoiceRecognition, 250);
+        }
+      };
+      voiceRecognition.start();
+    } catch (error) {
+      console.warn("Could not start voice recognition:", error);
+      voiceRecognition = null;
+      voiceInputUnavailable = true;
+      if (label) label.textContent = "Voice input unavailable · type a command below";
+    }
   }
 
   // -------------------------------------------------------------
@@ -986,6 +2141,7 @@
     AppState.activeHelpRequest.isActive = true;
     AppState.activeHelpRequest.type = type || "I feel unsafe";
     AppState.activeHelpRequest.status = "broadcast";
+    AppState.activeHelpRequest.shareApproximateLocation = document.getElementById("share-approx-loc-check")?.checked !== false;
     AppState.activeHelpRequest.requestedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Update admin log
@@ -1003,7 +2159,7 @@
 
     closeAllModals();
     renderCurrentViews();
-    showToast("Assistance request active: Trusted contacts and 7 verified helpers alerted!");
+    showToast("Demo help request active: Safe Circle notice simulated and 7 helper views updated.");
   }
 
   // -------------------------------------------------------------
@@ -1060,10 +2216,10 @@
       <div style="padding: 14px 6px;">
         <div class="app-header">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="alert-badge">🚨 CRITICAL ALERT</span>
+            <span class="alert-badge">DEMO ALERT</span>
             <span style="font-size: 13px; font-weight: 800; color: #fff;">SafeLink Dispatch</span>
           </div>
-          <span style="font-size: 11px; color: var(--accent-red); font-weight: 700;">Live Mesh</span>
+          <span style="font-size: 11px; color: var(--accent-cyan); font-weight: 700;">Helper Demo View</span>
         </div>
 
         <!-- Alert Container (Screen 6 Required Content) -->
@@ -1081,7 +2237,7 @@
           <div style="background: rgba(0,0,0,0.35); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
               <div>
-                <span style="color: var(--text-muted); font-size: 10px; text-transform: uppercase;">Approximate Distance:</span>
+                <span style="color: var(--text-muted); font-size: 10px; text-transform: uppercase;">Approximate Distance (demo):</span>
                 <div style="font-weight: 700; color: var(--accent-cyan); font-size: 14px;">~280m away</div>
               </div>
               <div>
@@ -1182,15 +2338,16 @@
 
   // SCREEN 7: Help Response View (User Screen when helper responds)
   function renderHelpResponseScreen() {
+    const helperAccepted = AppState.activeHelpRequest.status === "accepted";
     return `
       <div class="app-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <button class="icon-btn" id="help-response-back-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
-          <h3 style="font-size: 17px; font-weight: 700;">Assistance Coordinated</h3>
+          <h3 style="font-size: 17px; font-weight: 700;">Assistance Request</h3>
         </div>
-        <span class="stat-pill teal">Active Response</span>
+        <span class="stat-pill ${AppState.activeHelpRequest.status === "accepted" ? "teal" : "amber"}">${AppState.activeHelpRequest.status === "accepted" ? "Helper Responding" : "Request Active"}</span>
       </div>
 
       <div class="card" style="border-color: rgba(6, 214, 160, 0.5); background: linear-gradient(145deg, rgba(6, 214, 160, 0.1), rgba(19, 33, 68, 0.9));">
@@ -1198,9 +2355,9 @@
           <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan)); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; color: var(--ink);">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <div style="font-size: 12px; color: var(--accent-teal); font-weight: 700; text-transform: uppercase;">Help is being coordinated</div>
-          <h2 style="font-size: 20px; font-weight: 800; margin: 4px 0;">1 verified helper is responding</h2>
-          <p style="font-size: 13px; color: var(--accent-cyan); font-weight: 600;">Approx. 300m away • ETA ~2 min</p>
+          <div style="font-size: 12px; color: var(--accent-teal); font-weight: 700; text-transform: uppercase;">HELP REQUEST ACTIVE</div>
+          <h2 style="font-size: 20px; font-weight: 800; margin: 4px 0;">${AppState.activeHelpRequest.status === "accepted" ? "1 verified helper is responding" : "Nearby verified helpers have been alerted"}</h2>
+          <p style="font-size: 11px; color: var(--accent-cyan); font-weight: 600;">Approximate location sharing ${AppState.activeHelpRequest.shareApproximateLocation ? "on" : "off"} · ${helperAccepted ? "Helper ETA about 2 min" : "waiting for a helper to accept"} · exact location is not shown publicly</p>
         </div>
 
         <!-- Responder Mini Profile (Screen 7 Privacy compliant) -->
@@ -1218,7 +2375,7 @@
                 </div>
               </div>
             </div>
-            <span class="stat-pill teal">On Route</span>
+            <span class="stat-pill ${helperAccepted ? "teal" : "amber"}">${helperAccepted ? "On Route" : "Alert Sent"}</span>
           </div>
 
           <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
@@ -1228,6 +2385,7 @@
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button class="btn-secondary" id="btn-help-open-camera" style="width:100%;justify-content:center;">OPEN SAFETY CAMERA</button>
           <button class="btn-primary" id="btn-user-im-safe" style="background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue)); width: 100%; padding: 12px; font-size: 14px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             I’M SAFE — RESOLVE REQUEST
@@ -1322,6 +2480,11 @@
   // -------------------------------------------------------------
   function openSOSScreen() {
     SafeLinkAudio.playClick();
+    if (AppState.currentScreen === "assistant") {
+      stopVoiceRecognition();
+      const label = document.getElementById("assistant-listening-label");
+      if (label) label.textContent = "Microphone paused for SOS confirmation";
+    }
     // Open Confirmation Dialog to prevent accidental activation (Screen 9 Requirement)
     const modal = document.getElementById("sos-confirm-modal");
     if (modal) {
@@ -1333,11 +2496,20 @@
 
   function activateSOSConfirmed() {
     SafeLinkAudio.playSOS();
+    const approximateLocationEnabled = AppState.activeJourney.isActive
+      || (AppState.activeHelpRequest.isActive && AppState.activeHelpRequest.shareApproximateLocation);
     AppState.sosActive = true;
     AppState.activeHelpRequest.isActive = true;
     AppState.activeHelpRequest.type = "Emergency SOS";
     AppState.activeHelpRequest.status = "broadcast";
     AppState.activeHelpRequest.requestedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    AppState.activeHelpRequest.shareApproximateLocation = approximateLocationEnabled;
+    if (AppState.safetyRecording.isActive) {
+      AppState.safetyRecording.sosSnapshotStatus = "Saving the current recording privately on this device…";
+      void saveRecordingSnapshot(true);
+    } else {
+      AppState.safetyRecording.sosSnapshotStatus = "";
+    }
 
     // Update Admin Log
     AppState.adminRequests.unshift({
@@ -1366,7 +2538,7 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="width: 12px; height: 12px; border-radius: 50%; background: white; animation: pulse 0.8s infinite;"></span>
-              <span style="font-weight: 800; font-size: 14px; letter-spacing: 1px;">CRITICAL EMERGENCY</span>
+              <span style="font-weight: 800; font-size: 14px; letter-spacing: 1px;">DEMO SOS ACTIVE</span>
             </div>
             <span style="font-size: 11px; background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 12px;">Live Broadcast</span>
           </div>
@@ -1376,28 +2548,43 @@
               SOS ACTIVE
             </h1>
             <p style="font-size: 15px; font-weight: 700; color: #FFE3E6;">
-              Help network notified.
+              Active alert in this demo.
             </p>
+          </div>
+
+          ${AppState.safetyRecording.isActive ? `
+            <div class="sos-recording-status">
+              <strong>🔴 SAFETY RECORDING ACTIVE</strong>
+              <span>Camera: ON · Microphone: ${AppState.safetyRecording.microphoneEnabled ? "ON" : "OFF"} · Duration: ${formatRecordingDuration(currentRecordingDurationSeconds())}</span>
+              <span>${escapeHtml(AppState.safetyRecording.sosSnapshotStatus || "Recording continues while this screen is open.")}</span>
+              <button class="btn-secondary" id="sos-recording-controls">Recording controls</button>
+            </div>
+          ` : ""}
+          <div class="sos-recording-status">
+            <strong>Safety status</strong>
+            <span>Safe Circle: demo alert active · no SMS was sent</span>
+            <span>Location sharing: ${AppState.activeHelpRequest.shareApproximateLocation ? "Approximate location enabled" : "Off"}</span>
+            ${AppState.safetyRecording.sosSnapshotStatus ? `<span>${escapeHtml(AppState.safetyRecording.sosSnapshotStatus)}</span>` : ""}
           </div>
 
           <!-- Network Notification Checklist (Required Screen 9) -->
           <div style="background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); border-radius: var(--radius-md); padding: 14px; border: 1px solid rgba(255,255,255,0.15); margin-bottom: 16px;">
             <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
-                <span>Safe Circle notified via priority SMS</span>
+                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span>Safe Circle demo alert created · no SMS was sent</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
-                <span>7 nearby verified helpers alerted</span>
+                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span>Alert shown in nearby helper demo views</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
-                <span>Campus security dispatch pinged</span>
+                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span>Campus dispatch not contacted · use a call option if needed</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: var(--accent-teal); font-weight: 800;">✓</span>
-                <span>Approximate location broadcast: South Campus Quad</span>
+                <span style="color: #06D6A0; font-weight: 800;">✓</span>
+                <span>Approximate location status shown for this demo only</span>
               </div>
             </div>
           </div>
@@ -1768,6 +2955,8 @@
   // ATTACH EVENT LISTENERS TO RENDERED VIEWS
   // -------------------------------------------------------------
   function attachDynamicViewListeners() {
+    setupSafetyFeatureListeners();
+
     // Welcome Screen Logins
     const btnLoginStudent = document.getElementById("btn-login-student");
     if (btnLoginStudent) {
@@ -1940,7 +3129,7 @@
         }, 1000);
 
         renderCurrentViews();
-        showToast("Journey started! Safe Circle notified & route guard active.");
+        showToast("Journey started. Safe Circle demo status updated; no external message was sent.");
       });
     }
 
@@ -1960,7 +3149,7 @@
     if (btnShareJourney) {
       btnShareJourney.addEventListener("click", () => {
         SafeLinkAudio.playClick();
-        showToast("Encrypted journey link copied to clipboard & sent to Safe Circle!");
+        showToast("Journey shared in the Safe Circle demo view; no external message was sent.");
       });
     }
 
@@ -2022,7 +3211,7 @@
         SafeLinkAudio.playSuccess();
         AppState.activeJourney.isOverdue = false;
         renderCurrentViews();
-        showToast("Check-in confirmed. Safe Circle notified that you are safe.");
+        showToast("Check-in confirmed. Safe Circle demo status updated.");
         navigateTo("journey");
       });
     }
@@ -2040,6 +3229,9 @@
     if (btnUserImSafe) {
       btnUserImSafe.addEventListener("click", () => {
         SafeLinkAudio.playSuccess();
+        if (AppState.activeJourney.intervalId) clearInterval(AppState.activeJourney.intervalId);
+        AppState.activeJourney.isActive = false;
+        AppState.activeJourney.isOverdue = false;
         AppState.activeHelpRequest.isActive = false;
         AppState.activeHelpRequest.status = "idle";
         AppState.activeHelpRequest.assignedHelper = null;
@@ -2048,6 +3240,9 @@
         navigateTo("home");
       });
     }
+
+    const btnHelpOpenCamera = document.getElementById("btn-help-open-camera");
+    if (btnHelpOpenCamera) btnHelpOpenCamera.addEventListener("click", () => navigateTo("camera"));
 
     // Back buttons
     ["journey", "map", "circle", "network", "checkin", "help-response"].forEach(prefix => {
@@ -2354,41 +3549,68 @@
   // COMPETITION DEMO FLOW SCENARIOS (Judges' Favorite!)
   // -------------------------------------------------------------
 
-  // SCENARIO 1: Main Competition Demo Flow
-  // User A: Start Journey -> Request Help -> Helper Rahul receives alert -> Helper Rahul accepts -> User A sees "Verified Helper Responding" -> "I'M SAFE" -> Resolved
+  function scheduleDemoStep(delay, callback) {
+    const timeoutId = setTimeout(() => {
+      demoScenarioTimeouts = demoScenarioTimeouts.filter(id => id !== timeoutId);
+      callback();
+    }, delay);
+    demoScenarioTimeouts.push(timeoutId);
+  }
+
+  // SCENARIO 1: Journey -> Assistant confirmation -> helper alert -> camera -> safe
   function runFullDemoScenario() {
     setViewMode("dual");
     resetAppDemoState();
-    showToast("Starting Competition Scenario 1: Active Journey to Helper Assistance Coordination...");
+    showToast("Starting guided SafeLink demo: Journey, Assistant, helper alert, camera and safe check-out.");
 
-    // Step 1: Start Journey
-    setTimeout(() => {
+    scheduleDemoStep(800, () => {
       AppState.activeJourney.isActive = true;
       AppState.activeJourney.remainingSeconds = 22 * 60;
       navigateTo("journey");
-      showToast("Step 1: User Aanya starts active journey with controlled corridor.");
-    }, 800);
+      showToast("Step 1: Journey active with approximate sharing.");
+    });
 
-    // Step 2: Request Help
-    setTimeout(() => {
-      handleCreateHelpRequest("I feel unsafe");
-      navigateTo("help-response");
-      showToast("Step 2: Aanya feels unsafe and requests nearby assistance.");
-    }, 2800);
+    scheduleDemoStep(2400, () => {
+      isMicrophoneMuted = true;
+      AppState.assistantTranscript = "I feel unsafe";
+      AppState.assistantResponse = "I’m here with you. Do you want me to send a SafeLink assistance request?";
+      AppState.assistantConfirmation = true;
+      AppState.assistantConfirmationAction = "help-request";
+      navigateTo("assistant");
+      showToast("Step 2: Safe Assistant asks for confirmation. Demo transcript shown; microphone stays off.");
+    });
 
-    // Step 3: Helper Rahul accepts
-    setTimeout(() => {
+    scheduleDemoStep(4300, () => {
+      const confirmButton = document.getElementById("assistant-confirm-alert");
+      if (confirmButton) confirmButton.click();
+      showToast("Step 3: Confirmed help request appears in the nearby helper demo view.");
+    });
+
+    scheduleDemoStep(6000, () => {
       SafeLinkAudio.playSuccess();
       AppState.activeHelpRequest.status = "accepted";
       AppState.activeHelpRequest.assignedHelper = SafeLinkData.helperUser;
       renderCurrentViews();
-      showToast("Step 3: Verified Helper Rahul receives alert and taps 'I CAN ASSIST'.");
-    }, 5200);
+      showToast("Step 4: Rahul accepts the demo alert. You can open Safety Camera.");
+    });
 
-    // Step 4: Resolution
-    setTimeout(() => {
-      showToast("Step 4: Aanya meets helper at lit Safe Point, taps 'I'M SAFE'. Full coordination complete!");
-    }, 7800);
+    scheduleDemoStep(7600, () => {
+      AppState.demoCameraPreviewOnly = true;
+      navigateTo("camera");
+      showToast("Step 5: Private camera preview opened. No camera permission or capture is triggered in the guided demo.");
+    });
+
+    scheduleDemoStep(10300, () => {
+      AppState.demoCameraPreviewOnly = false;
+      navigateTo("help-response");
+      showToast("Step 6: Confirm you are safe to end the journey and help request.");
+    });
+
+    scheduleDemoStep(12500, () => {
+      const safeButton = document.getElementById("btn-user-im-safe");
+      if (safeButton) safeButton.click();
+      isMicrophoneMuted = false;
+    });
   }
 
   window.runFullDemoScenario = runFullDemoScenario;
@@ -2410,6 +3632,11 @@
   // -------------------------------------------------------------
   function closeAllModals() {
     document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
+    if (AppState.currentScreen === "assistant" && !isMicrophoneMuted && !AppState.assistantConfirmation) {
+      const label = document.getElementById("assistant-listening-label");
+      if (label) label.textContent = "Safe Assistant is listening";
+      beginVoiceRecognition();
+    }
   }
 
   window.closeAllModals = closeAllModals;
